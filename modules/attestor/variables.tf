@@ -15,27 +15,16 @@
  */
 
 variable "project_id" {
-  description = "The ID of the CI/CD project to provision resources."
   type        = string
+  description = "Project ID for CICD Pipeline Project"
 }
 
 variable "primary_location" {
   type        = string
   description = "Region used for key-ring"
-  default     = "us-central1"
 }
 
-variable "gke_project_ids" {
-  type        = map(string)
-  description = "map of env name to GKE project ID"
-}
-
-variable "gke_private_vpc_names" {
-  type        = map(string)
-  description = "map of env name to GKE network name"
-}
-
-variable "gke_private_service_accounts" {
-  type        = map(string)
-  description = "map of env name to GKE service account"
+variable "attestor_names_prefix" {
+  description = "A list of Binary Authorization attestors to create. The first attestor specified in this list will be used as the build-attestor during the CI phase."
+  type        = list(string)
 }

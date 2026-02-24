@@ -19,19 +19,16 @@ output "cache_bucket_name" {
   value       = google_storage_bucket.cache_bucket.name
 }
 
-output "build_trigger_name" {
-  description = "The name of the cloud build trigger for the app source repo."
-  value       = google_cloudbuild_trigger.app_build_trigger.name
-}
-
 output "binauth_attestor_names" {
   description = "Names of Attestors"
-  value       = [for attestor_name in var.attestor_names_prefix : module.attestors[attestor_name].attestor]
+  value       = keys(local.attestors)
 }
 
 output "binauth_attestor_ids" {
   description = "IDs of Attestors"
-  value       = { for attestor_name in var.attestor_names_prefix : attestor_name => "projects/${var.project_id}/attestors/${module.attestors[attestor_name].attestor}" }
+  # For each entry in our locals map, create a map entry
+  # with the key being the short name and the value being the full ID.
+  value = { for key, attestor in local.attestors : key => attestor.id }
 }
 
 output "binauth_attestor_project_id" {
@@ -44,14 +41,14 @@ output "app_artifact_repo" {
   value       = google_artifact_registry_repository.image_repo.name
 }
 
-output "source_repo_names" {
+output "source_repo_name" {
   description = "Name of the created CSR repos"
-  value       = [for repo in google_sourcerepo_repository.repos : repo.name]
+  value       = local.use_csr ? google_sourcerepo_repository.csr_ci_repository[0].name : null
 }
 
-output "source_repo_urls" {
+output "source_repo_url" {
   description = "URLS of the created CSR repos"
-  value       = { for repo in google_sourcerepo_repository.repos : repo.name => repo.url }
+  value       = local.use_csr ? google_sourcerepo_repository.csr_ci_repository[0].url : null
 }
 
 output "build_sa_email" {

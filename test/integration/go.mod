@@ -3,10 +3,12 @@ module github.com/terraform-google-modules/terraform-google-secure-cicd/test/int
 go 1.20
 
 require (
+	cloud.google.com/go/secretmanager v1.10.0
 	github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test v0.5.1
-	github.com/gruntwork-io/terratest v0.41.23
 	github.com/stretchr/testify v1.8.2
 )
+
+require github.com/gruntwork-io/terratest v0.41.23
 
 require (
 	cloud.google.com/go v0.110.0 // indirect
@@ -48,9 +50,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.2-0.20210217184823-a52172cd2f64 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
-	github.com/otiai10/copy v1.11.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/gjson v1.14.4
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect

@@ -78,7 +78,7 @@ steps:
       ENDPOINT="$${ENDPOINTS[$$INDEX]}"
       echo "Checking $$ENDPOINT"
 
-      docker container run --user root -v zapvolume:/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py -t http://$$ENDPOINT -r zap_report_${_TARGET_ID}_${_RELEASE_ID}.html -z '-config api.disablekey=true' -I
+      docker container run --user root -v zapvolume:/zap/wrk/:rw -t zaproxy/zap-stable zap-baseline.py -t http://$$ENDPOINT -r zap_report_${_TARGET_ID}_${_RELEASE_ID}.html -z '-config api.disablekey=true' -I
       cp /zap/wrk/zap_report_${_TARGET_ID}_${_RELEASE_ID}.html /workspace/zap_report_${_TARGET_ID}_${_RELEASE_ID}.html
   volumes:
     - name: 'zapvolume'

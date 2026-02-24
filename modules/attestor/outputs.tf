@@ -14,22 +14,17 @@
  * limitations under the License.
  */
 
-output "project_id" {
-  description = "The ID of the project in which resources are provisioned."
+output "binauth_attestor_names" {
+  description = "Names of Attestors"
+  value       = [for attestor_name in var.attestor_names_prefix : module.attestors[attestor_name].attestor]
+}
+
+output "binauth_attestor_ids" {
+  description = "IDs of Attestors"
+  value       = { for attestor_name in var.attestor_names_prefix : attestor_name => "projects/${var.project_id}/attestors/${module.attestors[attestor_name].attestor}" }
+}
+
+output "binauth_attestor_project_id" {
+  description = "Project ID where attestors get created"
   value       = var.project_id
-}
-
-output "cache_bucket_name" {
-  description = "The name of the storage bucket for cloud build."
-  value       = module.example.cache_bucket_name
-}
-
-output "build_trigger_name" {
-  description = "The name of the cloud build trigger for the bank of anthos repo."
-  value       = module.example.build_trigger_name
-}
-
-output "gke_project_ids" {
-  description = "The name of the cloud build trigger for the bank of anthos repo."
-  value       = values(var.gke_project_ids)
 }

@@ -48,7 +48,6 @@ resource "google_project_iam_member" "cd_sa_iam" {
 # Cloud Deploy Service Agent
 resource "google_project_service_identity" "clouddeploy_service_agent" {
   provider = google-beta
-
   project = var.project_id
   service = "clouddeploy.googleapis.com"
 }

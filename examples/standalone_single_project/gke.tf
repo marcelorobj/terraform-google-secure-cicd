@@ -39,13 +39,12 @@ resource "random_shuffle" "available_zones" {
 module "gke_cluster" {
   for_each = toset(local.envs)
   source   = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-  version  = "~> 25.0"
+  version  = "44.0"
 
   project_id                  = var.project_id
   name                        = "${var.app_name}-cluster-${each.value}"
   regional                    = true
   region                      = var.region
-  zones                       = sort(random_shuffle.available_zones.result)
   network                     = module.vpc.network_name
   subnetwork                  = local.subnets[each.value].subnet_name
   ip_range_pods               = "${local.subnets[each.value].subnet_name}-gke-pods"
@@ -78,13 +77,21 @@ module "gke_cluster" {
     }
   ]
 
+  # --- START OF THE CORRECT FIX ---
   node_pools = [
     {
-      name                 = "default-node-pool"
+      name         = "default-node-pool"
+      machine_type = "e2-medium" # This was the missing required parameter
+      disk_size_gb = 100         # It's good practice to define disk size
+
+      # Your existing autoscaling settings are correct for a regional cluster
       location_policy      = "BALANCED"
       total_max_node_count = 2
+      # For clarity and robustness, also define the minimum
+      total_min_node_count = 1
     }
   ]
+  # --- END OF THE CORRECT FIX ---
 
   node_pools_labels = {
     all = var.labels
@@ -92,14 +99,18 @@ module "gke_cluster" {
   cluster_resource_labels = var.labels
 
   depends_on = [
-    module.vpc
+    module.vpc,
+    data.google_compute_zones.available,
+    random_shuffle.available_zones
   ]
 }
+
+
 
 module "fleet_membership" {
   for_each = toset(local.envs)
   source   = "terraform-google-modules/kubernetes-engine/google//modules/fleet-membership"
-  version  = "~> 25.0.0"
+  version  = "~> 44.0"
 
   membership_name = "${module.gke_cluster[each.value].name}-membership"
   project_id      = var.project_id
