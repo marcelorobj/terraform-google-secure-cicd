@@ -29,8 +29,40 @@ locals {
   clouddeploy_pubsub_topic_name = "clouddeploy-operations"
 }
 
+resource "google_sourcerepo_repository" "csr_cd_repository" {
+  count = local.use_csr ? 1 : 0
+
+  project                      = var.project_id
+  name                         = var.csr_cloudbuild_cd_repo
+  create_ignore_already_exists = true
+}
+
+module "cloudbuild_repositories" {
+  count = local.use_csr ? 0 : 1
+
+  source  = "terraform-google-modules/bootstrap/google//modules/cloudbuild_repo_connection"
+  version = "12.0.0"
+
+  project_id = var.project_id
+
+  connection_config = {
+    connection_type = "${var.repository_type}v2"
+
+    github_secret_id        = var.github_auth != null ? var.github_auth.secret_id : null
+    github_app_id_secret_id = var.github_auth != null ? var.github_auth.app_id_secret_id : null
+
+    gitlab_read_authorizer_credential_secret_id = var.gitlab_auth != null ? var.gitlab_auth.read_authorizer_credential_secret_id : null
+    gitlab_authorizer_credential_secret_id      = var.gitlab_auth != null ? var.gitlab_auth.authorizer_credential_secret_id : null
+    gitlab_webhook_secret_id                    = var.gitlab_auth != null ? var.gitlab_auth.webhook_secret_id : null
+    gitlab_enterprise_host_uri                  = var.gitlab_auth != null ? var.gitlab_auth.enterprise_host_uri : null
+    gitlab_enterprise_service_directory         = var.gitlab_auth != null ? var.gitlab_auth.enterprise_service_directory : null
+    gitlab_enterprise_ca_certificate            = var.gitlab_auth != null ? var.gitlab_auth.enterprise_ca_certificate : null
+  }
+
+  cloud_build_repositories = local.repos
+}
+
 resource "google_clouddeploy_target" "deploy_target" {
-  provider = google-beta
   for_each = var.deploy_branch_clusters
 
   name        = each.value.target_type == "anthos_cluster" ? "${each.value.anthos_membership}-target" : each.value.target_type == "gke" ? "${each.value.cluster}-target" : "${each.key}-target"

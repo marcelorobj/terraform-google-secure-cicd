@@ -24,9 +24,10 @@ variable "primary_location" {
   description = "Region used for key-ring"
 }
 
-variable "cloudbuild_cd_repo" {
+variable "csr_cloudbuild_cd_repo" {
   type        = string
-  description = "Name of repo that stores the Cloud Build CD phase configs - for post-deployment checks"
+  description = "Name of the CSR repo that stores the Cloud Build CD phase configs - for post-deployment checks"
+  default     = null
 }
 
 variable "gar_repo_name" {
@@ -85,4 +86,62 @@ variable "labels" {
 variable "cloudbuild_service_account" {
   description = "Cloud Build SA email address"
   type        = string
+}
+
+variable "repository_type" {
+  description = "The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'."
+  type        = string
+  validation {
+    condition = (
+      var.repository_type != "GITHUB" ||
+      (var.github_auth != null && var.gitlab_auth == null)
+    )
+    error_message = "When repository_type is 'GITHUB', the 'github_auth' variable must be set, and 'gitlab_auth' must not be set."
+  }
+  validation {
+    condition = (
+      var.repository_type != "GITLAB" ||
+      (var.gitlab_auth != null && var.github_auth == null)
+    )
+    error_message = "When repository_type is 'GITLAB', the 'gitlab_auth' variable must be set, and 'github_auth' must not be set."
+  }
+  validation {
+    condition = (
+      var.repository_type != "CSR" ||
+      (var.github_auth == null && var.gitlab_auth == null)
+    )
+    error_message = "When repository_type is 'CSR', neither 'github_auth' nor 'gitlab_auth' should be set."
+  }
+}
+
+variable "cd_repository" {
+  type = object({
+    repository_name = string
+    repository_url  = string
+  })
+  description = "The CD repository to configure. The key is a short name for the service."
+  default     = null
+}
+variable "github_auth" {
+  type = object({
+    secret_id         = string
+    app_id_secret_id  = string
+    secret_project_id = string
+  })
+  description = "Authentication configuration for GitHub. Required only if repo_type is 'GITHUBv2'."
+  default     = null
+}
+
+variable "gitlab_auth" {
+  type = object({
+    read_authorizer_credential_secret_id = string
+    authorizer_credential_secret_id      = string
+    webhook_secret_id                    = string
+    enterprise_host_uri                  = optional(string)
+    enterprise_service_directory         = optional(string)
+    enterprise_ca_certificate            = optional(string)
+    secret_project_id                    = string
+  })
+  description = "Authentication configuration for GitLab. Required only if repo_type is 'GITLABv2'."
+  default     = null
 }

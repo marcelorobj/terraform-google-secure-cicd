@@ -23,8 +23,8 @@ locals {
       network               = module.vpc.network_name
       project_id            = var.project_id
       location              = var.region
-      required_attestations = [module.ci_pipeline.binauth_attestor_ids["build"]]
-      env_attestation       = module.ci_pipeline.binauth_attestor_ids["security"]
+      required_attestations = [module.attestors.binauth_attestor_ids["build"]]
+      env_attestation       = module.attestors.binauth_attestor_ids["security"]
       next_env              = "02-qa"
     },
     "02-${var.env2_name}" = {
@@ -34,8 +34,8 @@ locals {
       network               = module.vpc.network_name
       project_id            = var.project_id
       location              = var.region
-      required_attestations = [module.ci_pipeline.binauth_attestor_ids["security"], module.ci_pipeline.binauth_attestor_ids["build"]]
-      env_attestation       = module.ci_pipeline.binauth_attestor_ids["quality"]
+      required_attestations = [module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
+      env_attestation       = module.attestors.binauth_attestor_ids["quality"]
       next_env              = "03-prod"
     },
     "03-${var.env3_name}" = {
@@ -45,7 +45,7 @@ locals {
       network               = module.vpc.network_name
       project_id            = var.project_id
       location              = var.region
-      required_attestations = [module.ci_pipeline.binauth_attestor_ids["quality"], module.ci_pipeline.binauth_attestor_ids["security"], module.ci_pipeline.binauth_attestor_ids["build"]]
+      required_attestations = [module.attestors.binauth_attestor_ids["quality"], module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
       env_attestation       = ""
       next_env              = ""
     },
@@ -56,16 +56,16 @@ locals {
 
 # Secure-CI
 module "ci_pipeline" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-ci"
-  version = "~> 1.0"
+  source = "../../modules/secure-ci"
 
   project_id                = var.project_id
-  app_source_repo           = "${var.app_name}-source"
-  cloudbuild_cd_repo        = "${var.app_name}-cloudbuild-cd-config"
+  repository_type           = "GITHUB"
+  github_auth               = var.github_auth
+  ci_repository             = var.ci_repository
   gar_repo_name_suffix      = "${var.app_name}-image-repo"
   cache_bucket_name         = "${var.app_name}-cloudbuild"
   primary_location          = var.region
-  attestor_names_prefix     = ["build", "security", "quality"]
+  attestor_names_prefix     = module.attestors.binauth_attestor_names
   app_build_trigger_yaml    = "cloudbuild-ci.yaml"
   build_image_config_yaml   = "cloudbuild-skaffold-build-image.yaml"
   trigger_branch_name       = ".*"
@@ -73,34 +73,39 @@ module "ci_pipeline" {
   clouddeploy_pipeline_name = local.clouddeploy_pipeline_name
   skip_provisioners         = true
   labels                    = var.labels
+  providers = {
+    google = google.secure_cicd
+  }
 }
 
-# Secure-CD
 module "cd_pipeline" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-cd"
-  version = "~> 1.0"
+  source = "../../modules/secure-cd"
 
   project_id       = var.project_id
-  primary_location = var.region
+  primary_location = "us-central1"
 
+  repository_type            = "GITHUB"
+  github_auth                = var.github_auth
   gar_repo_name              = module.ci_pipeline.app_artifact_repo
-  cloudbuild_cd_repo         = "${var.app_name}-cloudbuild-cd-config"
+  cd_repository              = var.cd_repository
   deploy_branch_clusters     = local.deploy_branch_clusters
   app_deploy_trigger_yaml    = "cloudbuild-cd.yaml"
   cache_bucket_name          = module.ci_pipeline.cache_bucket_name
   cloudbuild_private_pool    = module.cloudbuild_private_pool.workerpool_id
   clouddeploy_pipeline_name  = local.clouddeploy_pipeline_name
   cloudbuild_service_account = module.ci_pipeline.build_sa_email
-  labels                     = var.labels
   depends_on = [
     module.ci_pipeline
   ]
+  providers = {
+    google = google.secure_cicd
+  }
 }
+
 
 # Cloud Build Private Pool
 module "cloudbuild_private_pool" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
-  version = "~> 1.0"
+  source = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
 
   project_id                = var.project_id
   network_project_id        = var.project_id
@@ -115,4 +120,14 @@ module "cloudbuild_private_pool" {
   worker_range_name            = "cloudbuild-worker-range"
 
   labels = var.labels
+}
+
+module "attestors" {
+  source = "../../modules/attestor"
+
+  project_id = var.project_id
+
+  primary_location = var.region
+
+  attestor_names_prefix = ["build", "security", "quality"]
 }

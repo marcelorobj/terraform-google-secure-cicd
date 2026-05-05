@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "> 4, < 8"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = ">= 3.7.2"
-    }
-  }
+output "binauth_attestor_names" {
+  description = "Names of Attestors"
+  value       = [for attestor_name in var.attestor_names_prefix : module.attestors[attestor_name].attestor]
+}
+
+output "binauth_attestor_ids" {
+  description = "IDs of Attestors"
+  value       = { for attestor_name in var.attestor_names_prefix : attestor_name => "projects/${var.project_id}/attestors/${module.attestors[attestor_name].attestor}" }
+}
+
+output "binauth_attestor_project_id" {
+  description = "Project ID where attestors get created"
+  value       = var.project_id
 }

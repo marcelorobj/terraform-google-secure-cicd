@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "> 4, < 8"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = ">= 3.7.2"
-    }
-  }
+variable "project_id" {
+  type        = string
+  description = "Project ID for CICD Pipeline Project"
+}
+
+variable "primary_location" {
+  type        = string
+  description = "Region used for key-ring"
+}
+
+variable "attestor_names_prefix" {
+  description = "A list of Binary Authorization attestors to create. The first attestor specified in this list will be used as the build-attestor during the CI phase."
+  type        = list(string)
 }

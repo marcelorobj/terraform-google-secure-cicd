@@ -19,18 +19,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = ">= 3.45"
-    }
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = ">= 3.45"
+      version = "> 4, < 8"
     }
   }
 
   provider_meta "google" {
-    module_name = "blueprints/terraform/terraform-google-secure-cicd:workerpool-gke-ha-vpn/v1.2.1"
-  }
-  provider_meta "google-beta" {
     module_name = "blueprints/terraform/terraform-google-secure-cicd:workerpool-gke-ha-vpn/v1.2.1"
   }
 }

@@ -21,16 +21,9 @@ terraform {
       source  = "hashicorp/google"
       version = ">= 4.3.0" # google_cloudbuild_worker_pool in GA requires >= 4.3.0
     }
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = ">= 4.3.0"
-    }
   }
 
   provider_meta "google" {
-    module_name = "blueprints/terraform/terraform-google-secure-cicd:cloudbuild-private-pool/v1.2.1"
-  }
-  provider_meta "google-beta" {
     module_name = "blueprints/terraform/terraform-google-secure-cicd:cloudbuild-private-pool/v1.2.1"
   }
 }

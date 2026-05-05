@@ -37,6 +37,40 @@ variable "env1_name" {
   default     = "dev"
 }
 
+variable "repo_type" {
+  type        = string
+  description = "Name of environment 1"
+  default     = "CSR"
+}
+
+variable "github_auth" {
+  type = object({
+    secret_id         = string
+    app_id_secret_id  = string
+    secret_project_id = string
+  })
+  description = "Authentication configuration for GitHub. Required only if repo_type is 'GITHUBv2'."
+  default     = null
+}
+
+variable "ci_repository" {
+  type = object({
+    repository_name = string
+    repository_url  = string
+  })
+  description = "The CI repository to configure. The key is a short name for the service."
+  default     = null
+}
+
+variable "cd_repository" {
+  type = object({
+    repository_name = string
+    repository_url  = string
+  })
+  description = "The CI repository to configure. The key is a short name for the service."
+  default     = null
+}
+
 variable "env2_name" {
   type        = string
   description = "Name of environment 2"

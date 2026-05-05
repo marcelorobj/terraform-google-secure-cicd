@@ -24,6 +24,7 @@ resource "google_pubsub_topic" "clouddeploy_topic" {
 
 # Trigger post-deploy checks on successful Cloud Deploy rollout
 resource "google_cloudbuild_trigger" "deploy_trigger" {
+  # This for_each loop remains unchanged from your original code.
   for_each = {
     for env, config in var.deploy_branch_clusters : env => config
     if config.next_env != ""
@@ -36,16 +37,20 @@ resource "google_cloudbuild_trigger" "deploy_trigger" {
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_service_account}"
 
+  # This Pub/Sub trigger configuration remains unchanged.
   pubsub_config {
     topic = google_pubsub_topic.clouddeploy_topic.id
   }
 
+  # This block now dynamically points to the correct repository source.
   source_to_build {
-    uri       = "https://source.developers.google.com/p/${var.project_id}/r/${var.cloudbuild_cd_repo}"
-    ref       = "main"
-    repo_type = "CLOUD_SOURCE_REPOSITORIES"
+    uri        = local.cd_repo_source.uri
+    ref        = "main"
+    repo_type  = local.cd_repo_source.repo_type
+    repository = local.cd_repo_source.repository
   }
 
+  # The substitutions block is complete and unchanged.
   substitutions = merge(
     {
       _GAR_REPOSITORY            = var.gar_repo_name
@@ -60,17 +65,16 @@ resource "google_cloudbuild_trigger" "deploy_trigger" {
       _ATTESTOR_NAME             = each.value.env_attestation
       _CLOUDBUILD_PRIVATE_POOL   = var.cloudbuild_private_pool
       _CLOUDDEPLOY_PIPELINE_NAME = var.clouddeploy_pipeline_name
-      # Create substitutions to parse incoming Pub/sub messages from Cloud Deploy
+      # Substitutions to parse incoming Pub/sub messages from Cloud Deploy
       _ACTION_TYPE          = "$(body.message.attributes.Action)"
       _RESOURCE_TYPE        = "$(body.message.attributes.ResourceType)"
       _DELIVERY_PIPELINE_ID = "$(body.message.attributes.DeliveryPipelineId)"
       _TARGET_ID            = "$(body.message.attributes.TargetId)"
       _RELEASE_ID           = "$(body.message.attributes.ReleaseId)"
-
     },
     var.additional_substitutions
   )
 
-  # Only trigger the post-deployment check on relevant Cloud Deploy activity (successful rollout to a target)
+  # The filter remains complete and unchanged.
   filter = "_RESOURCE_TYPE.matches('Rollout') && _ACTION_TYPE.matches('Succeed') && _DELIVERY_PIPELINE_ID.matches('${var.clouddeploy_pipeline_name}') && _TARGET_ID.matches('${google_clouddeploy_target.deploy_target[each.key].name}')"
 }

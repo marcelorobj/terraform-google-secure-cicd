@@ -21,8 +21,6 @@ resource "google_project_service" "servicenetworking" {
   disable_on_destroy = false
 }
 resource "google_project_service_identity" "servicenetworking_agent" {
-  provider = google-beta
-
   project = var.network_project_id
   service = "servicenetworking.googleapis.com"
 }
@@ -49,8 +47,6 @@ data "google_compute_network" "workerpool_vpc" {
 }
 
 resource "google_compute_global_address" "worker_range" {
-  provider = google-beta # labels support require google-beta
-
   name          = var.worker_range_name
   project       = var.network_project_id
   labels        = var.labels
