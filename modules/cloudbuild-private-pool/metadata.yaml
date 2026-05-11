@@ -43,7 +43,7 @@ spec:
   interfaces:
     variables:
     - name: create_cloudbuild_network
-      description: Whether to create a VPC for the Cloud Build Worker Pool. Set to false if providing an existing VPC name in 'private_pool_vpc_name' 
+      description: Whether to create a VPC for the Cloud Build Worker Pool. Set to false if providing an existing VPC name in 'private_pool_vpc_name'
       varType: bool
       defaultValue: null
       required: true
