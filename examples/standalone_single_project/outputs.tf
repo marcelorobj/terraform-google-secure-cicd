@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+output "project_id" {
+  description = "Project ID"
+  value       = var.project_id
+}
+
+output "region" {
+  description = "Region"
+  value       = var.region
+}
 
 output "cloudbuild_cd_repo_name" {
   description = "URL of the created CSR app soure repo"
@@ -26,11 +35,20 @@ output "gar_repo" {
 }
 
 output "neos_tutorial_url" {
-  description = "The URL to launch the in-console tutorial for the Secure CI/CD pipeline solution"
   value       = "https://console.cloud.google.com/products/solutions/catalog?walkthrough_id=solutions-in-console--secure-cicd-pipeline--tour&project=${var.project_id}"
 }
 
 output "console_walkthrough_link" {
-  description = "URL to open the in-console walkthrough."
   value       = "https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fterraform-google-secure-cicd.git&cloudshell_git_branch=main&cloudshell_tutorial=examples%2Fstandalone_single_project%2Fwalkthrough.md&project=${var.project_id}"
+}
+
+output "clouddeploy_pipeline_id" {
+  description = "ID of the Cloud Deploy delivery pipeline"
+  value       = module.cd_pipeline.clouddeploy_delivery_pipeline_id
+}
+
+output "cluster_names" {
+  description = "Comma-separated names of the deployed GKE clusters"
+  # Use join() to create a single string like: "cluster-dev,cluster-qa,cluster-prod"
+  value       = join(",", [for k, v in module.gke_cluster : v.name])
 }
