@@ -21,6 +21,8 @@ resource "google_project_service" "servicenetworking" {
   disable_on_destroy = false
 }
 resource "google_project_service_identity" "servicenetworking_agent" {
+  provider = google-beta
+
   project = var.network_project_id
   service = "servicenetworking.googleapis.com"
 }

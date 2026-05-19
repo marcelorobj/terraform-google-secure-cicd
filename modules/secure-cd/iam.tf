@@ -47,6 +47,7 @@ resource "google_project_iam_member" "cd_sa_iam" {
 
 # Cloud Deploy Service Agent
 resource "google_project_service_identity" "clouddeploy_service_agent" {
+  provider = google-beta
   project = var.project_id
   service = "clouddeploy.googleapis.com"
 }
@@ -112,6 +113,7 @@ resource "google_project_iam_member" "cloudbuild_gkehub_gatewayadmin" {
 
 # IAM membership for Binary Authorization service agents in GKE projects on attestors
 resource "google_project_service_identity" "binauth_service_agent" {
+  provider = google-beta
   for_each = var.deploy_branch_clusters
 
   project = each.value.project_id
