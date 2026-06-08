@@ -8,21 +8,21 @@ The Terraform modules in this repository provide an opinionated architecture tha
 Create a CI/CD pipeline that follows security best practices.
 
 ### Detailed
-Set up a secure CI/CD pipeline that follows best practices for building, scanning, storing, and deploying containers to GKE.
+Set up a secure CI/CD pipeline that follows best practices for building, scanning, storing, and deploying containers to GKE, Anthos, or Cloud Run.
 You can choose whether to deploy your solution through the console directly or download as Terraform from GitHub to deploy later.
 
 ### Architecture
-1. A developer pushes new code or a code change for a container-based application to Cloud Source Repositories.
-1. The code push invokes a Cloud Build trigger. The Cloud Build trigger starts a build in a Cloud Build private worker pool that's hosted in a customer-managed VPC. The outputs of the build are metadata files, Cloud Build logs, and containers.
-1. The metadata files and the Cloud Build logs are stored in a Cloud Storage bucket.
-1. The pipeline runs security scans (which you configure) and validates the container structure. When the scans and structure pass, the containers are stored in Artifact Registry.
-1. The Cloud Build trigger requests an attestation from Binary Authorization that certifies that the required scans passed. The attestation is stored as a cryptographic signature in Binary Authorization.
-1. The Cloud Build trigger starts a Cloud Deploy release to roll out the containers to the three environments: developer (Dev), QA, and production (Prod). Each environment is one Kubernetes cluster in its own subnet. All three clusters and subnets are in the same GKE VPC. The last cluster is the production environment.
-1. As the rollout starts, Cloud Deploy sends the containers to the developer environment. Google Kubernetes Engine (GKE) uses the policy that's defined for the cluster to check the containers’ build attestation in Binary Authorization. When this check passes, GKE deploys the containers into the Kubernetes cluster.
-1. When Cloud Deploy releases the containers to the developer environment, Cloud Deploy sends a Pub/Sub message that starts the second Cloud Build trigger. This Cloud Build trigger runs post-deployment tests (which you configure) in the developer environment. To run these tests, Cloud Build worker pools communicate with the clusters using Connect Gateway.
-1. When the post-deployment checks succeed, the Cloud Build trigger requests an attestation from Binary Authorization. The attestation certifies that the required tests from the developer environment passed.
-1. Cloud Deploy promotes the release to the second Kubernetes cluster for the QA environment. Steps 7 to 9 run again with some differences: GKE checks for the two attestations before deploying, and after the tests pass, the quality attestation is created.
-1. Cloud Deploy promotes the release to the production environment, which is the third Kubernetes cluster. GKE uses a policy to check for all three attestations in Binary Authorization. When this check passes, GKE deploys the containers in the Kubernetes cluster for the production environment.
+1. A developer pushes new code or a code change for a container-based application to a Source Repository (Cloud Source Repositories, GitHub, or GitLab).
+2. The code push invokes a Cloud Build trigger. The Cloud Build trigger starts a build in a Cloud Build private worker pool that's hosted in a customer-managed VPC. The outputs of the build are metadata files, Cloud Build logs, and containers.
+3. The metadata files and the Cloud Build logs are stored in a Cloud Storage bucket.
+4. The pipeline runs security scans (which you configure) and validates the container structure. When the scans and structure pass, the containers are stored in Artifact Registry.
+5. The Cloud Build trigger requests an attestation from Binary Authorization that certifies that the required scans passed. The attestation is stored as a cryptographic signature in Binary Authorization.
+6. The Cloud Build trigger starts a Cloud Deploy release to roll out the containers to the three environments: developer (Dev), QA, and production (Prod). Each environment is one Kubernetes cluster in its own subnet. All three clusters and subnets are in the same GKE VPC. The last cluster is the production environment.
+7. As the rollout starts, Cloud Deploy sends the containers to the developer environment. Google Kubernetes Engine (GKE) uses the policy that's defined for the cluster to check the containers’ build attestation in Binary Authorization. When this check passes, GKE deploys the containers into the Kubernetes cluster.
+8. When Cloud Deploy releases the containers to the developer environment, Cloud Deploy sends a Pub/Sub message that starts the second Cloud Build trigger. This Cloud Build trigger runs post-deployment tests (which you configure) in the developer environment. To run these tests, Cloud Build worker pools communicate with the clusters using Connect Gateway.
+9. When the post-deployment checks succeed, the Cloud Build trigger requests an attestation from Binary Authorization. The attestation certifies that the required tests from the developer environment passed.
+10. Cloud Deploy promotes the release to the second Kubernetes cluster for the QA environment. Steps 7 to 9 run again with some differences: GKE checks for the two attestations before deploying, and after the tests pass, the quality attestation is created.
+11. Cloud Deploy promotes the release to the production environment, which is the third Kubernetes cluster. GKE uses a policy to check for all three attestations in Binary Authorization. When this check passes, GKE deploys the containers in the Kubernetes cluster for the production environment.
 
 ## Documentation
 - [Architecture Diagram](https://github.com/GoogleCloudPlatform/terraform-google-secure-cicd/blob/main/assets/secure_cicd_pipeline_v2.svg)
@@ -36,51 +36,63 @@ Basic usage of this module is as follows:
 module "ci_pipeline" {
   source                  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-ci"
 
-  project_id              = var.project_id
+  project_id              = {PROJECT_ID}
   primary_location        = "us-central1"
+  repository_type         = "CSR"
+  csr_app_source_repo     = "my-app-source"
   attestor_names_prefix   = ["build", "security", "quality"]
   app_build_trigger_yaml  = "cloudbuild-ci.yaml"
-  runner_build_folder     = "../../../examples/app_cicd/cloud-build-builder"
   build_image_config_yaml = "cloudbuild-skaffold-build-image.yaml"
-  trigger_branch_name     = ".*"
+  trigger_branch_name     = "^main$"
 }
 
 # Secure-CD
 module "cd_pipeline" {
   source           = "GoogleCloudPlatform/secure-cicd/google//modules/secure-cd"
 
-  project_id              = var.project_id
-  primary_location        = "us-central1"
-  gar_repo_name           = module.ci_pipeline.app_artifact_repo
-  cloudbuild_cd_repo      = "cloudbuild-cd-config-pc"
+  project_id                 = {PROJECT_ID}
+  primary_location           = "us-central1"
+  repository_type            = "CSR"
+  csr_cloudbuild_cd_repo     = "cloudbuild-cd-config-pc"
+  gar_repo_name              = module.ci_pipeline.app_artifact_repo
+  app_deploy_trigger_yaml    = "cloudbuild-cd.yaml"
+  cache_bucket_name          = module.ci_pipeline.cache_bucket_name
+  clouddeploy_pipeline_name  = "my-app-delivery-pipeline"
+  cloudbuild_service_account = module.ci_pipeline.build_sa_email
+
   deploy_branch_clusters  = {
     dev = {
       cluster               = "dev-cluster",
-      project_id            = "gke-proj-dev",
+      anthos_membership     = "",
+      project_id            = "{PROJECT_ID}",
       location              = "us-central1",
-      required_attestations = ["projects/${var.project_id}/attestors/build-attestor"]
-      env_attestation       = "projects/${var.project_id}/attestors/security-attestor"
+      required_attestations = ["projects/${{PROJECT_ID}}/attestors/build-attestor"]
+      env_attestation       = "projects/${{PROJECT_ID}}/attestors/security-attestor"
       next_env              = "qa"
+      target_type           = "gke"
     },
     qa = {
       cluster               = "qa-cluster",
-      project_id            = "gke-proj-prod",
+      anthos_membership     = "",
+      project_id            = "{PROJECT_ID}",
       location              = "us-central1",
-      required_attestations = ["projects/${var.project_id}/attestors/security-attestor", "projects/${var.project_id}/attestors/build-attestor"]
-      env_attestation       = "projects/${var.project_id}/attestors/quality-attestor"
+      required_attestations = ["projects/${{PROJECT_ID}}/attestors/security-attestor", "projects/${{PROJECT_ID}}/attestors/build-attestor"]
+      env_attestation       = "projects/${{PROJECT_ID}}/attestors/quality-attestor"
       next_env              = "prod"
+      target_type           = "gke"
     },
     prod = {
       cluster               = "prod-cluster",
-      project_id            = "gke-proj-prod",
+      anthos_membership     = "",
+      project_id            = "{PROJECT_ID}",
       location              = "us-central1",
-      required_attestations = ["projects/${var.project_id}/attestors/quality-attestor", "projects/${var.project_id}/attestors/security-attestor", "projects/${var.project_id}/attestors/build-attestor"]
+      required_attestations = ["projects/${{PROJECT_ID}}/attestors/quality-attestor", "projects/${{PROJECT_ID}}/attestors/security-attestor", "projects/${{PROJECT_ID}}/attestors/build-attestor"]
       env_attestation       = ""
       next_env              = ""
+      target_type           = "gke"
     },
   }
-  app_deploy_trigger_yaml = "cloudbuild-cd.yaml"
-  cache_bucket_name       = module.ci_pipeline.cache_bucket_name
+
   depends_on = [
     module.ci_pipeline
   ]
@@ -118,7 +130,8 @@ the resources of this blueprint:
   - CI/CD project
     - `roles/artifactregistry.admin`
     - `roles/binaryauthorization.attestorsAdmin`
-    - `roles/cloudbuild.builds.builder`
+    - `roles/cloudbuild.builds.editor`
+    - `roles/cloudbuild.connectionAdmin`
     - `roles/cloudbuild.workerPoolOwner`
     - `roles/clouddeploy.admin`
     - `roles/cloudkms.admin`
@@ -128,7 +141,8 @@ the resources of this blueprint:
     - `roles/gkehub.editor`
     - `roles/iam.serviceAccountAdmin`
     - `roles/iam.serviceAccountUser`
-    - `roles/pubsub.editor`
+    - `roles/pubsub.admin`
+    - `roles/secretmanager.secretAccessor`
     - `roles/serviceusage.serviceUsageAdmin`
     - `roles/source.admin`
     - `roles/storage.admin`
@@ -168,6 +182,7 @@ CI/CD Project
 - Cloud KMS API `cloudkms.googleapis.com`
 - Binary Authorization API `binaryauthorization.googleapis.com`
 - Container Scanning API `containerscanning.googleapis.com`
+- Secret Manager API `secretmanager.googleapis.com`
 
 GKE Projects:
 - Cloud Resource Manager API `cloudresourcemanager.googleapis.com`

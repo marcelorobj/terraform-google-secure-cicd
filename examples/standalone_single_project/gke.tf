@@ -45,7 +45,7 @@ module "gke_cluster" {
   name                        = "${var.app_name}-cluster-${each.value}"
   regional                    = true
   region                      = var.region
-  network                     = module.vpc.network_name
+  network                     = var.network_name == null ? module.vpc.network_name : var.network_name
   subnetwork                  = local.subnets[each.value].subnet_name
   ip_range_pods               = "${local.subnets[each.value].subnet_name}-gke-pods"
   ip_range_services           = "${local.subnets[each.value].subnet_name}-gke-services"
@@ -53,6 +53,7 @@ module "gke_cluster" {
   create_service_account      = true
   enable_binary_authorization = true
   remove_default_node_pool    = true
+  deletion_protection         = false
 
   grant_registry_access = true
   registry_project_ids  = [var.project_id]

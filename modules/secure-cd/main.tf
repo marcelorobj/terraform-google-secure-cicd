@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,7 +119,6 @@ resource "google_clouddeploy_delivery_pipeline" "pipeline" {
   }
 }
 
-# Binary Authorization Policy
 resource "google_binary_authorization_policy" "deployment_policy" {
   for_each = local.binary_authorization_map
   project  = each.key

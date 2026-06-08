@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+resource "random_string" "suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
 
 resource "google_sourcerepo_repository" "csr_ci_repository" {
   count = local.use_csr ? 1 : 0
@@ -49,7 +55,7 @@ module "cloudbuild_repositories" {
 
 resource "google_storage_bucket" "cache_bucket" {
   project                     = var.project_id
-  name                        = local.cache_bucket_name
+  name                        = "${local.cache_bucket_name}-${random_string.suffix.id}"
   location                    = var.primary_location
   uniform_bucket_level_access = true
   force_destroy               = true
@@ -57,6 +63,13 @@ resource "google_storage_bucket" "cache_bucket" {
     enabled = true
   }
   labels = var.labels
+
+  dynamic "encryption" {
+    for_each = var.bucket_kms_key != null ? [1] : []
+    content {
+      default_kms_key_name = var.bucket_kms_key
+    }
+  }
 }
 
 resource "google_service_account" "build_sa" {

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ artifacts:
       - '/workspace/svcs-endpoints-filtered.json'
       - '/workspace/zap_report_${_TARGET_ID}_${_RELEASE_ID}.html'
 logsBucket: gs://$_CACHE_BUCKET_NAME/build_logs
-steps:
 
+steps:
 ############################### Post-Deploy Checks ###########################
 
 # Get endpoint IPs
