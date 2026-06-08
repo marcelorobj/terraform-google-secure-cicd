@@ -26,5 +26,11 @@ terraform {
       version = "> 4, < 8"
     }
   }
-}
 
+  provider_meta "google" {
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:secure-cd/v1.2.2"
+  }
+  provider_meta "google-beta" {
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:secure-cd/v1.2.2"
+  }
+}
