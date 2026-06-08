@@ -24,9 +24,29 @@ output "region" {
   value       = var.region
 }
 
-output "cloudbuild_cd_repo_name" {
-  description = "URL of the created CSR app soure repo"
-  value       = "${var.app_name}-cloudbuild-cd-config"
+output "gitlab_url" {
+  description = "The URL of the GitLab instance."
+  value       = var.gitlab_auth.enterprise_host_uri
+}
+
+output "ci_repo_url" {
+  description = "The URL of the CI repository."
+  value       = var.ci_repository.repository_url
+}
+
+output "ci_repo_name" {
+  description = "The name of the CI repository."
+  value       = var.ci_repository.repository_name
+}
+
+output "cd_repo_url" {
+  description = "The URL of the CD repository."
+  value       = var.cd_repository.repository_url
+}
+
+output "cd_repo_name" {
+  description = "The name of the CD repository."
+  value       = var.cd_repository.repository_name
 }
 
 output "gar_repo" {
@@ -35,11 +55,11 @@ output "gar_repo" {
 }
 
 output "neos_tutorial_url" {
-  value       = "https://console.cloud.google.com/products/solutions/catalog?walkthrough_id=solutions-in-console--secure-cicd-pipeline--tour&project=${var.project_id}"
+  value = "https://console.cloud.google.com/products/solutions/catalog?walkthrough_id=solutions-in-console--secure-cicd-pipeline--tour&project=${var.project_id}"
 }
 
 output "console_walkthrough_link" {
-  value       = "https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fterraform-google-secure-cicd.git&cloudshell_git_branch=main&cloudshell_tutorial=examples%2Fstandalone_single_project%2Fwalkthrough.md&project=${var.project_id}"
+  value = "https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fterraform-google-secure-cicd.git&cloudshell_git_branch=main&cloudshell_tutorial=examples%2Fstandalone_single_project%2Fwalkthrough.md&project=${var.project_id}"
 }
 
 output "clouddeploy_pipeline_id" {
@@ -50,5 +70,5 @@ output "clouddeploy_pipeline_id" {
 output "cluster_names" {
   description = "Comma-separated names of the deployed GKE clusters"
   # Use join() to create a single string like: "cluster-dev,cluster-qa,cluster-prod"
-  value       = join(",", [for k, v in module.gke_cluster : v.name])
+  value = join(",", [for k, v in module.gke_cluster : v.name])
 }

@@ -20,7 +20,7 @@ locals {
       cluster               = module.gke_cluster[var.env1_name].name,
       anthos_membership     = module.fleet_membership[var.env1_name].cluster_membership_id
       target_type           = "anthos_cluster"
-      network               = module.vpc.network_name
+      network               = var.network_name == null ? module.vpc.network_name : var.network_name
       project_id            = var.project_id
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["build"]]
@@ -31,7 +31,7 @@ locals {
       cluster               = module.gke_cluster[var.env2_name].name,
       anthos_membership     = module.fleet_membership[var.env2_name].cluster_membership_id
       target_type           = "anthos_cluster"
-      network               = module.vpc.network_name
+      network               = var.network_name == null ? module.vpc.network_name : var.network_name
       project_id            = var.project_id
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
@@ -42,7 +42,7 @@ locals {
       cluster               = module.gke_cluster[var.env3_name].name,
       anthos_membership     = module.fleet_membership[var.env3_name].cluster_membership_id
       target_type           = "anthos_cluster"
-      network               = module.vpc.network_name
+      network               = var.network_name == null ? module.vpc.network_name : var.network_name
       project_id            = var.project_id
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["quality"], module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
@@ -56,11 +56,13 @@ locals {
 
 # Secure-CI
 module "ci_pipeline" {
-  source = "../../modules/secure-ci"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-ci"
+  version = "~> 1.0"
 
   project_id                = var.project_id
-  repository_type           = "GITHUB"
-  github_auth               = var.github_auth
+  repository_type           = var.repository_type
+  github_auth               = var.repository_type == "GITHUB" ? var.github_auth : null
+  gitlab_auth               = var.repository_type == "GITLAB" ? var.gitlab_auth : null
   ci_repository             = var.ci_repository
   gar_repo_name_suffix      = "${var.app_name}-image-repo"
   cache_bucket_name         = "${var.app_name}-cloudbuild"
@@ -69,43 +71,41 @@ module "ci_pipeline" {
   app_build_trigger_yaml    = "cloudbuild-ci.yaml"
   build_image_config_yaml   = "cloudbuild-skaffold-build-image.yaml"
   trigger_branch_name       = ".*"
-  cloudbuild_private_pool   = module.cloudbuild_private_pool.workerpool_id
+  cloudbuild_private_pool   = var.private_worker_pool_id == null ? module.cloudbuild_private_pool.workerpool_id : var.private_worker_pool_id
   clouddeploy_pipeline_name = local.clouddeploy_pipeline_name
   skip_provisioners         = true
   labels                    = var.labels
-  providers = {
-    google = google.secure_cicd
-  }
 }
 
 module "cd_pipeline" {
-  source = "../../modules/secure-cd"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-cd"
+  version = "~> 1.0"
 
   project_id       = var.project_id
-  primary_location = "us-central1"
+  primary_location = var.region
 
-  repository_type            = "GITHUB"
-  github_auth                = var.github_auth
+  repository_type            = var.repository_type
+  github_auth                = var.repository_type == "GITHUB" ? var.github_auth : null
+  gitlab_auth                = var.repository_type == "GITLAB" ? var.gitlab_auth : null
   gar_repo_name              = module.ci_pipeline.app_artifact_repo
   cd_repository              = var.cd_repository
   deploy_branch_clusters     = local.deploy_branch_clusters
   app_deploy_trigger_yaml    = "cloudbuild-cd.yaml"
   cache_bucket_name          = module.ci_pipeline.cache_bucket_name
-  cloudbuild_private_pool    = module.cloudbuild_private_pool.workerpool_id
+  cloudbuild_private_pool    = var.private_worker_pool_id == null ? module.cloudbuild_private_pool.workerpool_id : var.private_worker_pool_id
   clouddeploy_pipeline_name  = local.clouddeploy_pipeline_name
   cloudbuild_service_account = module.ci_pipeline.build_sa_email
   depends_on = [
     module.ci_pipeline
   ]
-  providers = {
-    google = google.secure_cicd
-  }
 }
 
 
 # Cloud Build Private Pool
 module "cloudbuild_private_pool" {
-  source = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
+  count   = var.private_worker_pool_id == null ? 1 : 0
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
+  version = "~> 1.0"
 
   project_id                = var.project_id
   network_project_id        = var.project_id
@@ -123,7 +123,8 @@ module "cloudbuild_private_pool" {
 }
 
 module "attestors" {
-  source = "../../modules/attestor"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/attestor"
+  version = "~> 1.0"
 
   project_id = var.project_id
 

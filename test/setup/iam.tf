@@ -20,11 +20,14 @@ locals {
     "roles/binaryauthorization.attestorsAdmin",
     "roles/cloudbuild.builds.builder",
     "roles/cloudbuild.workerPoolOwner",
+    "roles/cloudbuild.admin",
     "roles/clouddeploy.admin",
     "roles/cloudkms.admin",
     "roles/cloudkms.publicKeyViewer",
     "roles/containeranalysis.notes.editor",
+    "roles/compute.admin",
     "roles/compute.networkAdmin",
+    "roles/compute.securityAdmin",
     "roles/gkehub.editor",
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser",
@@ -33,7 +36,10 @@ locals {
     "roles/source.admin",
     "roles/storage.admin",
     "roles/resourcemanager.projectIamAdmin",
-    "roles/viewer"
+    "roles/viewer",
+    "roles/secretmanager.admin",
+    "roles/servicedirectory.admin",
+    "roles/dns.admin"
   ]
   gke_int_required_roles = [
     "roles/compute.networkAdmin",
@@ -44,48 +50,18 @@ locals {
     "roles/serviceusage.serviceUsageViewer",
     "roles/iam.serviceAccountUser"
   ]
-  gke_proj_role_mapping = flatten([
-    for env in local.envs : [
-      for role in local.gke_int_required_roles : {
-        project = module.gke_project[env].project_id
-        role    = role
-        env     = env
-      }
-    ]
-  ])
 }
 
 resource "google_service_account" "int_test" {
-  project      = module.project.project_id
+  project      = module.project_standalone.project_id
   account_id   = "ci-account"
   display_name = "ci-account"
-}
-
-# SA permissions on CI/CD (main) project
-resource "google_project_iam_member" "int_test" {
-  for_each = toset(local.int_required_roles)
-
-  project = module.project.project_id
-  role    = each.value
-  member  = "serviceAccount:${google_service_account.int_test.email}"
-}
-
-# SA permissions on GKE projects
-resource "google_project_iam_member" "gke_int_test" {
-  for_each = {
-    for mapping in local.gke_proj_role_mapping : "${mapping.env}.${mapping.role}" => mapping
-  }
-
-  project = each.value.project
-  role    = each.value.role
-  member  = "serviceAccount:${google_service_account.int_test.email}"
 }
 
 resource "google_service_account_key" "int_test" {
   service_account_id = google_service_account.int_test.id
 }
 
-# SA permissions on standalone single project example
 resource "google_project_iam_member" "int_test_singleproj" {
   for_each = toset(local.int_required_roles)
 

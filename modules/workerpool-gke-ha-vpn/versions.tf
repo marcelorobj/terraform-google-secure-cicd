@@ -15,7 +15,7 @@
  */
 
 terraform {
-  required_version = ">= 0.13.0"
+  required_version = "~> 1.3"
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -24,6 +24,9 @@ terraform {
   }
 
   provider_meta "google" {
-    module_name = "blueprints/terraform/terraform-google-secure-cicd:workerpool-gke-ha-vpn/v1.2.1"
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:workerpool-gke-ha-vpn/v1.2.2"
+  }
+  provider_meta "google-beta" {
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:workerpool-gke-ha-vpn/v1.2.2"
   }
 }

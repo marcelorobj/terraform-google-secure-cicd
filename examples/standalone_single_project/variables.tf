@@ -28,7 +28,7 @@ variable "region" {
 variable "app_name" {
   type        = string
   description = "Name of intended deployed application; to be used as a prefix for certain resources"
-  default     = "my-app"
+  default     = "ci-cd"
 }
 
 variable "env1_name" {
@@ -37,10 +37,24 @@ variable "env1_name" {
   default     = "dev"
 }
 
-variable "repo_type" {
+variable "repository_type" {
   type        = string
-  description = "Name of environment 1"
-  default     = "CSR"
+  description = "Repository type, e.g. GITHUB or GITLAB"
+  default     = "GITLAB"
+}
+
+variable "gitlab_auth" {
+  type = object({
+    read_authorizer_credential_secret_id = string
+    authorizer_credential_secret_id      = string
+    webhook_secret_id                    = string
+    enterprise_host_uri                  = optional(string)
+    enterprise_service_directory         = optional(string)
+    enterprise_ca_certificate            = optional(string)
+    secret_project_id                    = string
+  })
+  description = "Authentication configuration for GitLab. Required only if repo_type is 'GITLABv2'."
+  default     = null
 }
 
 variable "github_auth" {
@@ -93,4 +107,14 @@ variable "labels" {
   description = "A set of key/value label pairs to assign to the resources deployed by this blueprint."
   type        = map(string)
   default     = {}
+}
+
+variable "private_worker_pool_id" {
+  description = "Optional private worker pool id if using already existing worker pool"
+  default     = null
+}
+
+variable "network_name" {
+  description = "Optional vpc network name if using already existing vpc"
+  default     = null
 }

@@ -15,15 +15,22 @@
  */
 
 terraform {
-  required_version = ">= 0.13.0"
+  required_version = "~> 1.3"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = ">= 4.3.0 < 8" # google_cloudbuild_worker_pool in GA requires >= 4.3.0
+      version = ">= 4.3.0, < 8"
     }
-    google_beta = {
+    google-beta = {
       source  = "hashicorp/google-beta"
-      version = ">= 4.3.0 < 8"
+      version = ">= 4.3.0, < 8"
     }
+  }
+
+  provider_meta "google" {
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:cloudbuild-private-pool/v1.2.2"
+  }
+  provider_meta "google-beta" {
+    module_name = "blueprints/terraform/terraform-google-secure-cicd:cloudbuild-private-pool/v1.2.2"
   }
 }

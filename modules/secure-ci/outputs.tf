@@ -26,9 +26,7 @@ output "binauth_attestor_names" {
 
 output "binauth_attestor_ids" {
   description = "IDs of Attestors"
-  # For each entry in our locals map, create a map entry
-  # with the key being the short name and the value being the full ID.
-  value = { for key, attestor in local.attestors : key => attestor.id }
+  value       = { for key, attestor in local.attestors : key => attestor.id }
 }
 
 output "binauth_attestor_project_id" {
@@ -54,4 +52,13 @@ output "source_repo_url" {
 output "build_sa_email" {
   description = "Cloud Build Service Account email address"
   value       = google_service_account.build_sa.email
+}
+
+output "standalone_bucket_kms_key" {
+  value = var.bucket_kms_key
+}
+
+output "skaffold_builder_image_tag" {
+  description = "The full path to the built Skaffold builder image in Artifact Registry."
+  value       = local.skaffold_builder_image_tag
 }

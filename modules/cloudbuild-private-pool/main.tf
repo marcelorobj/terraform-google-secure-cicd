@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-# Networking config
 resource "google_project_service" "servicenetworking" {
   project            = var.network_project_id
   service            = "servicenetworking.googleapis.com"
@@ -79,7 +78,6 @@ resource "google_compute_network_peering_routes_config" "service_networking_peer
   ]
 }
 
-# Cloud Build Worker Pool
 resource "google_cloudbuild_worker_pool" "pool" {
   name     = var.worker_pool_name
   project  = var.project_id

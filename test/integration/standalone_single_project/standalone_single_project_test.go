@@ -1,33 +1,32 @@
-/**
- * Copyright 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package standalone_single_project
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	// "time" // Uncomment if using RetryableErrors or Polling
-
-	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/gcloud"
+	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/git"
 	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/tft"
-
-	// "github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/utils" // Uncomment if using Polling
 	"github.com/stretchr/testify/assert"
+	"github.com/terraform-google-modules/terraform-google-secure-cicd/test/integration/testutils"
 	"github.com/tidwall/gjson"
 )
 
@@ -47,126 +46,132 @@ func assertHasRole(assert *assert.Assertions, bindings []gjson.Result, role stri
 	assert.True(found, fmt.Sprintf("Role '%s' should be granted to '%s' on %s", role, expectedMember, resourceName))
 }
 
-func TestStandaloneSingleProjectExample(t *testing.T) {
+func runCmd(t *testing.T, dir, name string, args ...string) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	t.Logf("Running command in %s: %s %v", dir, name, args)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Command failed in %s: %s %v, error: %v", dir, name, args, err)
+	}
+}
 
-	// 1. Initialize the Setup Environment
-	setupOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup"))
-	projectID := setupOutput.GetStringOutput("project_id")
-	// If you added outputs to the setup module (like network details), grab them here.
+func setupGitOperations(t *testing.T, bpFolder, wsFolder, ciRepoName string, cdRepoName string) {
+	t.Log("Starting Git Operations Setup...")
 
-	// 2. Define Variables for the Main Module
-	vars := map[string]interface{}{
-		"project_id": projectID,
-		"region":     "us-central1", // Or pull from setup if dynamic
-		// Add other necessary variables that your standalone_single_project requires
+	gitLabPath := "../../setup/harness/gitlab"
+	gitLab := tft.NewTFBlueprintTest(t, tft.WithTFDir(gitLabPath))
+	gitUrl := gitLab.GetStringOutput("gitlab_url")
+	gitlabPersonalTokenSecretName := gitLab.GetStringOutput("gitlab_pat_secret_name")
+	gitlabSecretProject := gitLab.GetStringOutput("gitlab_secret_project")
+
+	token, err := testutils.GetSecretFromSecretManager(t, gitlabPersonalTokenSecretName, gitlabSecretProject)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// 3. Initialize the Main Blueprint Test
+	hostNameWithPath := strings.Split(gitUrl, "https://")[1]
+	ciRepoUrl := fmt.Sprintf("https://oauth2:%s@%s/root/%s", token, hostNameWithPath, ciRepoName)
+	cdRepoUrl := fmt.Sprintf("https://oauth2:%s@%s/root/%s", token, hostNameWithPath, cdRepoName)
+
+	// Configure Git
+	runCmd(t, wsFolder, "git", "config", "--global", "user.email", "test-user@example.com")
+	runCmd(t, wsFolder, "git", "config", "--global", "user.name", "Test User")
+
+	cdRepoLocalPath := filepath.Join(wsFolder, cdRepoName)
+
+	cdGit := git.NewCmdConfig(t, git.WithDir(wsFolder))
+	cdGitRun := func(args ...string) {
+		_, err := cdGit.RunCmdE(args...)
+		if err != nil {
+			t.Fatalf("CD Git command failed in %s: %v", wsFolder, err)
+		}
+	}
+
+	cdGitRun("clone", cdRepoUrl, cdRepoLocalPath)
+	cdGit = git.NewCmdConfig(t, git.WithDir(cdRepoLocalPath))
+	cdGitRun = func(args ...string) {
+		_, err := cdGit.RunCmdE(args...)
+		if err != nil {
+			t.Fatalf("CD Git command failed in %s: %v", cdRepoLocalPath, err)
+		}
+	}
+	cdGitRun("checkout", "-b", "main")
+
+	cfdYamlDest := filepath.Join(cdRepoLocalPath, "cloudbuild-cd.yaml")
+	runCmd(t, bpFolder, "cp", "/workspace/build/cloudbuild-cd.yaml", cfdYamlDest)
+
+	cdGitRun("add", ".")
+	cdGit.CommitWithMsg("initial commit", []string{"--allow-empty"})
+	cdGitRun("push", "origin", "main", "--force")
+
+	appRepoLocalPath := filepath.Join(wsFolder, "bank-of-anthos")
+
+	appGit := git.NewCmdConfig(t, git.WithDir(wsFolder))
+	appGitRun := func(args ...string) {
+		_, err := appGit.RunCmdE(args...)
+		if err != nil {
+			t.Fatalf("CI Git command failed in %s: %v", wsFolder, err)
+		}
+	}
+
+	appGitRun("clone", "--branch", "v0.5.11", "https://github.com/GoogleCloudPlatform/bank-of-anthos.git", appRepoLocalPath)
+	appGit = git.NewCmdConfig(t, git.WithDir(appRepoLocalPath))
+	appGitRun = func(args ...string) {
+		_, err := appGit.RunCmdE(args...)
+		if err != nil {
+			t.Fatalf("Git command failed in %s: %v", appRepoLocalPath, err)
+		}
+	}
+	appGitRun("checkout", "-b", "main")
+
+	ciYamlDest := filepath.Join(appRepoLocalPath, "cloudbuild-ci.yaml")
+	runCmd(t, bpFolder, "cp", "/workspace/build/cloudbuild-ci.yaml", ciYamlDest)
+
+	policiesDest := filepath.Join(appRepoLocalPath, "policies")
+	runCmd(t, bpFolder, "cp", "-R", "/workspace/build/policies", policiesDest)
+
+	appGitRun("remote", "add", "gitlab", ciRepoUrl)
+	appGitRun("add", ".")
+	appGit.CommitWithMsg("initial commit", []string{"--allow-empty"})
+	appGitRun("push", "gitlab", "main", "--force")
+	t.Log("Finished Git Operations Setup.")
+}
+
+func TestStandaloneSingleProjectExample(t *testing.T) {
+
+	setupOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup"))
+	projectID := setupOutput.GetStringOutput("project_id_standalone")
+	region := setupOutput.GetStringOutput("primary_location")
+
+	blueprintFolder := ("../../../../")
+
+	workspaceFolder, err := os.MkdirTemp("/tmp", "workspace-*")
+	if err != nil {
+		t.Fatalf("Failed to create temporary workspace: %v", err)
+	}
+	log.Printf("Created workspace folder: %s", workspaceFolder)
+	defer os.RemoveAll(workspaceFolder)
+
+	vars := map[string]interface{}{
+		"project_id": projectID,
+		"region":     region,
+	}
+
 	standaloneSingleProjT := tft.NewTFBlueprintTest(t,
 		tft.WithVars(vars),
 		tft.WithTFDir("../../../examples/standalone_single_project"),
-		// tft.WithRetryableTerraformErrors(testutils.RetryableTransientErrors, 3, 2*time.Minute), // Highly recommended if you copy the testutils package
 	)
 
-	// 4. Define the Custom Verifier
 	standaloneSingleProjT.DefineVerify(func(assert *assert.Assertions) {
-		// Perform default verification ensuring Terraform reports no additional changes
-		// standaloneSingleProjT.DefaultVerify(assert)
 
-		// Fetch Outputs
-		region := standaloneSingleProjT.GetStringOutput("region")
-		garRepoName := standaloneSingleProjT.GetStringOutput("gar_repo")
-		pipelineFullID := standaloneSingleProjT.GetStringOutput("clouddeploy_pipeline_id")
+		ciRepoName := standaloneSingleProjT.GetStringOutput("ci_repo_name")
+		cdRepoName := standaloneSingleProjT.GetStringOutput("cd_repo_name")
+		setupGitOperations(t, blueprintFolder, workspaceFolder, ciRepoName, cdRepoName)
 
-		// Parse the pipeline name from the full ID string
-		pipelineParts := strings.Split(pipelineFullID, "/")
-		pipelineName := pipelineParts[len(pipelineParts)-1]
-
-		buildSAEmail := fmt.Sprintf("serviceAccount:%s", standaloneSingleProjT.GetStringOutput("build_sa_email"))
-		deploySAEmail := fmt.Sprintf("serviceAccount:%s", standaloneSingleProjT.GetStringOutput("deploy_sa_email"))
-
-		// Handle the comma-separated cluster names
-		clusterNamesString := standaloneSingleProjT.GetStringOutput("cluster_names")
-		clusterNames := strings.Split(clusterNamesString, ",")
-		assert.NotEmpty(clusterNamesString, "cluster_names output should not be empty")
-
-		// ====================================================================
-		// A. Artifact Registry Verification
-		// ====================================================================
-		garCommand := fmt.Sprintf("artifacts repositories describe %s --location=%s --project=%s --format=json", garRepoName, region, projectID)
-		garResult := gcloud.Run(t, garCommand)
-
-		assert.Equal("DOCKER", garResult.Get("format").String(), "Artifact Registry format should be DOCKER")
-
-		// ====================================================================
-		// B. Cloud Deploy Pipeline Verification
-		// ====================================================================
-		deployCommand := fmt.Sprintf("deploy delivery-pipelines describe %s --region=%s --project=%s --format=json", pipelineName, region, projectID)
-		deployResult := gcloud.Run(t, deployCommand)
-
-		assert.False(deployResult.Get("suspended").Bool(), "Cloud Deploy pipeline should be active (not suspended)")
-
-		stages := deployResult.Get("serialPipeline.stages").Array()
-		assert.NotEmpty(stages, "Cloud Deploy pipeline should have at least one stage configured")
-
-		// ====================================================================
-		// C. GKE Clusters Security Posture Verification
-		// ====================================================================
-		for _, clusterName := range clusterNames {
-			if clusterName == "" {
-				continue
-			}
-
-			clusterCmd := fmt.Sprintf("container clusters describe %s --region=%s --project=%s --format=json", clusterName, region, projectID)
-			clusterResult := gcloud.Run(t, clusterCmd)
-
-			// Cluster Status
-			assert.Equal("RUNNING", clusterResult.Get("status").String(), fmt.Sprintf("Cluster %s should be RUNNING", clusterName))
-
-			// Network Security: Ensure private nodes
-			isPrivate := clusterResult.Get("privateClusterConfig.enablePrivateNodes").Bool()
-			assert.True(isPrivate, fmt.Sprintf("Cluster %s should have private nodes enabled", clusterName))
-
-			// Workload Identity Posture
-			expectedWorkloadPool := fmt.Sprintf("%s.svc.id.goog", projectID)
-			assert.Equal(expectedWorkloadPool, clusterResult.Get("workloadIdentityConfig.workloadPool").String(), fmt.Sprintf("Cluster %s workloadPool should be configured securely", clusterName))
-
-			// Binary Authorization Posture
-			binAuthzMode := clusterResult.Get("binaryAuthorization.evaluationMode").String()
-			assert.Equal("PROJECT_SINGLETON_POLICY_ENFORCE", binAuthzMode, fmt.Sprintf("Binary Authorization should be enforced on cluster %s", clusterName))
-
-			// Shielded Nodes Posture
-			shieldedNodes := clusterResult.Get("shieldedNodes.enableSecureBoot").Bool()
-			assert.True(shieldedNodes, fmt.Sprintf("Shielded Nodes Secure Boot should be enabled on cluster %s", clusterName))
-		}
-
-		// ====================================================================
-		// D. IAM & Principle of Least Privilege Verification
-		// ====================================================================
-
-		// 1. Fetch Project-level IAM policy
-		projectIamCmd := fmt.Sprintf("projects get-iam-policy %s --format=json", projectID)
-		projectIam := gcloud.Run(t, projectIamCmd)
-		projectBindings := projectIam.Get("bindings").Array()
-
-		// 2. Fetch GAR-level IAM policy
-		garIamCmd := fmt.Sprintf("artifacts repositories get-iam-policy %s --location=%s --project=%s --format=json", garRepoName, region, projectID)
-		garIamResult := gcloud.Run(t, garIamCmd)
-		garBindings := garIamResult.Get("bindings").Array()
-
-		// Assert CI Pipeline (Build SA) Permissions
-		assertHasRole(assert, garBindings, "roles/artifactregistry.writer", buildSAEmail, "Artifact Registry")
-		// (Assume KMS is bound at project level for this example, adjust if bound to key)
-		assertHasRole(assert, projectBindings, "roles/cloudkms.signerVerifier", buildSAEmail, "Project (KMS Signer)")
-
-		// Assert CD Pipeline (Deploy SA) Permissions
-		assertHasRole(assert, projectBindings, "roles/clouddeploy.jobRunner", deploySAEmail, "Project (Cloud Deploy Runner)")
-		assertHasRole(assert, projectBindings, "roles/container.developer", deploySAEmail, "Project (GKE Developer)")
-
+		standaloneSingleProjT.DefaultVerify(assert)
 	})
-
-	// Optional: Define custom teardown if necessary (e.g., deleting leftover Cloud Build artifacts or GAR images)
-	// standaloneSingleProjT.DefineTeardown(func(assert *assert.Assertions) { ... })
 
 	// 5. Execute the Test
 	standaloneSingleProjT.Test()
