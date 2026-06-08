@@ -55,7 +55,8 @@ output "build_sa_email" {
 }
 
 output "standalone_bucket_kms_key" {
-  value = var.bucket_kms_key
+  description = "KMS Key for standalone bucket."
+  value       = var.bucket_kms_key
 }
 
 output "skaffold_builder_image_tag" {

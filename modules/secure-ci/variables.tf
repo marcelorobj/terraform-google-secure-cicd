@@ -34,17 +34,6 @@ variable "app_build_trigger_yaml" {
   description = "Name of application cloudbuild yaml file"
 }
 
-variable "runner_build_folder" {
-  type        = string
-  description = "Path to the source folder for the cloud builds submit command. Leave blank if `skip_provisioners = true`"
-  default     = ""
-}
-
-variable "build_image_config_yaml" {
-  type        = string
-  description = "Name of image builder yaml file"
-}
-
 variable "csr_app_source_repo" {
   type        = string
   description = "Name of repo that contains app source code along with cloudbuild yaml"
@@ -61,12 +50,6 @@ variable "gar_repo_name_suffix" {
   type        = string
   description = "Docker artifact registry repo to store app build images"
   default     = "app-image-repo"
-}
-
-variable "use_tf_google_credentials_env_var" {
-  description = "Optional GOOGLE_CREDENTIALS environment variable to be activated."
-  type        = bool
-  default     = false
 }
 
 variable "trigger_branch_name" {
@@ -110,12 +93,6 @@ variable "clouddeploy_pipeline_name" {
   description = "Cloud Deploy pipeline name"
   type        = string
   default     = "deploy-pipeline"
-}
-
-variable "skip_provisioners" {
-  description = "Skip modules that use provisioners/local-exec"
-  type        = bool
-  default     = false
 }
 
 variable "labels" {

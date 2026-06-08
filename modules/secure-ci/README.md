@@ -102,7 +102,6 @@ The template `cloudbuild-ci.yaml` build configuration runs container structure a
 | app\_build\_trigger\_yaml | Name of application cloudbuild yaml file | `string` | n/a | yes |
 | attestor\_names\_prefix | A list of Binary Authorization attestors to create. The first attestor specified in this list will be used as the build-attestor during the CI phase. | `list(string)` | n/a | yes |
 | bucket\_kms\_key | KMS Key id to be used to encrypt bucket. | `string` | `null` | no |
-| build\_image\_config\_yaml | Name of image builder yaml file | `string` | n/a | yes |
 | cache\_bucket\_name | Name of cloudbuild artifact and cache GCS bucket | `string` | `""` | no |
 | ci\_repository | The CI repository to configure. The key is a short name for the service. | <pre>object({<br>    repository_name = string<br>    repository_url  = string<br>  })</pre> | `null` | no |
 | cloudbuild\_private\_pool | Cloud Build private pool self-link | `string` | `""` | no |
@@ -116,10 +115,7 @@ The template `cloudbuild-ci.yaml` build configuration runs container structure a
 | primary\_location | Region used for key-ring | `string` | n/a | yes |
 | project\_id | Project ID for CICD Pipeline Project | `string` | n/a | yes |
 | repository\_type | The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'. | `string` | n/a | yes |
-| runner\_build\_folder | Path to the source folder for the cloud builds submit command. Leave blank if `skip_provisioners = true` | `string` | `""` | no |
-| skip\_provisioners | Skip modules that use provisioners/local-exec | `bool` | `false` | no |
 | trigger\_branch\_name | A regular expression to match one or more branches for the build trigger. | `string` | n/a | yes |
-| use\_tf\_google\_credentials\_env\_var | Optional GOOGLE\_CREDENTIALS environment variable to be activated. | `bool` | `false` | no |
 
 ## Outputs
 
@@ -134,6 +130,6 @@ The template `cloudbuild-ci.yaml` build configuration runs container structure a
 | skaffold\_builder\_image\_tag | The full path to the built Skaffold builder image in Artifact Registry. |
 | source\_repo\_name | Name of the created CSR repos |
 | source\_repo\_url | URLS of the created CSR repos |
-| standalone\_bucket\_kms\_key | n/a |
+| standalone\_bucket\_kms\_key | KMS Key for standalone bucket. |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

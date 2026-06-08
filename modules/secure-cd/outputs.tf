@@ -21,7 +21,7 @@ output "deploy_trigger_names" {
 
 output "binauthz_policy_required_attestations" {
   description = "Binary Authorization policy required attestation in GKE projects"
-  value       = [for policy in google_binary_authorization_policy.deployment_policy : policy.cluster_admission_rules.*.require_attestations_by]
+  value       = [for policy in google_binary_authorization_policy.deployment_policy : policy.cluster_admission_rules[*].require_attestations_by]
 }
 
 output "clouddeploy_delivery_pipeline_id" {

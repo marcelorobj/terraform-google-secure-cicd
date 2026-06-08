@@ -123,8 +123,7 @@ module "cloudbuild_private_pool" {
 }
 
 module "attestors" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/attestor"
-  version = "~> 1.0"
+  source = "../../modules/attestor"
 
   project_id = var.project_id
 
