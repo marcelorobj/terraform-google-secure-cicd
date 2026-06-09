@@ -39,9 +39,10 @@ locals {
 
 # Private Cluster VPCs
 module "vpc" {
-  count   = var.network_name == null ? 1 : 0
   source  = "terraform-google-modules/network/google"
   version = "~> 18.0"
+
+  count = var.network_name == null ? 1 : 0
 
   project_id   = var.project_id
   network_name = "${var.app_name}-vpc"
