@@ -33,6 +33,10 @@ terraform {
       source  = "hashicorp/null"
       version = ">= 3.3.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.12.0"
+    }
   }
 
   provider_meta "google" {
