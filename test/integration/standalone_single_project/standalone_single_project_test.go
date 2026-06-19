@@ -165,14 +165,15 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 	)
 
 	standaloneSingleProjT.DefineVerify(func(assert *assert.Assertions) {
+		// Verifier's Note: A successful apply is just the beginning.
+		// We will now query the data plane to assert the state of our deployed resources.
 
 		ciRepoName := standaloneSingleProjT.GetStringOutput("ci_repo_name")
 		cdRepoName := standaloneSingleProjT.GetStringOutput("cd_repo_name")
 		setupGitOperations(t, blueprintFolder, workspaceFolder, ciRepoName, cdRepoName)
 
 		standaloneSingleProjT.DefaultVerify(assert)
-	})
 
-	// 5. Execute the Test
+	})
 	standaloneSingleProjT.Test()
 }

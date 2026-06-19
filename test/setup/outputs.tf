@@ -27,6 +27,10 @@ output "sa_key" {
   sensitive = true
 }
 
+output "sa_email" {
+  value = google_service_account.int_test.email
+}
+
 output "folder_id" {
   value = var.folder_id
 }

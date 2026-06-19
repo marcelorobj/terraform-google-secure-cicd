@@ -11,6 +11,7 @@ For simplified deployment and demonstration purposes, this blueprint creates GKE
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| access\_level\_name | (VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter. | `string` | `null` | no |
 | app\_name | Name of intended deployed application; to be used as a prefix for certain resources | `string` | `"ci-cd"` | no |
 | cd\_repository | The CI repository to configure. The key is a short name for the service. | <pre>object({<br>    repository_name = string<br>    repository_url  = string<br>  })</pre> | `null` | no |
 | ci\_repository | The CI repository to configure. The key is a short name for the service. | <pre>object({<br>    repository_name = string<br>    repository_url  = string<br>  })</pre> | `null` | no |
@@ -31,17 +32,19 @@ For simplified deployment and demonstration purposes, this blueprint creates GKE
 
 | Name | Description |
 |------|-------------|
-| cd\_repo\_name | The name of the CD repository. |
+| attestors | Map of Binary Authorization attestor IDs by name |
+| cd\_build\_trigger\_ids | Map of CD Cloud Build trigger names by environment |
+| cd\_repo\_name | Name of the CD source repository |
 | cd\_repo\_url | The URL of the CD repository. |
-| ci\_repo\_name | The name of the CI repository. |
+| ci\_build\_trigger\_id | ID of the CI Cloud Build trigger |
+| ci\_repo\_name | Name of the CI source repository |
 | ci\_repo\_url | The URL of the CI repository. |
+| cloudbuild\_workerpool\_id | ID of the Cloud Build private worker pool |
 | clouddeploy\_pipeline\_id | ID of the Cloud Deploy delivery pipeline |
-| cluster\_names | Comma-separated names of the deployed GKE clusters |
-| console\_walkthrough\_link | n/a |
-| gar\_repo | Artifact Registry repo |
+| gar\_repo\_name | Name of the Artifact Registry repository |
 | gitlab\_url | The URL of the GitLab instance. |
-| neos\_tutorial\_url | n/a |
-| project\_id | Project ID |
-| region | Region |
+| gke\_cluster\_names | Map of GKE Cluster names by environment |
+| project\_id | Project ID in which all resources were deployed |
+| region | Region in which all regional resources were deployed |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

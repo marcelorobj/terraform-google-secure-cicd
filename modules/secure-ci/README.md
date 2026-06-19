@@ -98,6 +98,7 @@ The template `cloudbuild-ci.yaml` build configuration runs container structure a
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| access\_level\_name | (VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter. | `string` | `null` | no |
 | additional\_substitutions | Parameters to be substituted in the build specification. All keys should begin with an underscore. | `map(string)` | `{}` | no |
 | app\_build\_trigger\_yaml | Name of application cloudbuild yaml file | `string` | n/a | yes |
 | attestor\_names\_prefix | A list of Binary Authorization attestors to create. The first attestor specified in this list will be used as the build-attestor during the CI phase. | `list(string)` | n/a | yes |
@@ -127,6 +128,7 @@ The template `cloudbuild-ci.yaml` build configuration runs container structure a
 | binauth\_attestor\_project\_id | Project ID where attestors get created |
 | build\_sa\_email | Cloud Build Service Account email address |
 | cache\_bucket\_name | The name of the storage bucket for cloud build. |
+| ci\_build\_trigger\_id | ID of the CI Cloud Build trigger. |
 | skaffold\_builder\_image\_tag | The full path to the built Skaffold builder image in Artifact Registry. |
 | source\_repo\_name | Name of the created CSR repos |
 | source\_repo\_url | URLS of the created CSR repos |

@@ -76,6 +76,8 @@ func TestBootstrapGitlabVM(t *testing.T) {
 
 	setupOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup"))
 
+	servicePerimeterOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup/harness/service_perimeter"))
+
 	clusterNetworkOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup/harness/cluster_network"))
 
 	privateWorkerPoolOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup/harness/private_workerpool"))
@@ -93,6 +95,8 @@ func TestBootstrapGitlabVM(t *testing.T) {
 	gitlabTokenSecretId := fmt.Sprintf("projects/%s/secrets/%s", gitlabSecretProjectNumber, gitlabPersonalTokenSecretName)
 	privateWorkerPoolId := privateWorkerPoolOutput.GetStringOutput("workerpool_id")
 	clusterNetworkName := clusterNetworkOutput.GetStringOutput("network_name")
+
+	accessLevelName := servicePerimeterOutput.GetStringOutput("access_level_name")
 
 	token, err := testutils.GetSecretFromSecretManager(t, gitlabPersonalTokenSecretName, gitlabSecretProject)
 	if err != nil {
@@ -127,8 +131,12 @@ func TestBootstrapGitlabVM(t *testing.T) {
 
 	root := "../../.."
 
-	// Replace Service Directory
 	err = testutils.ReplacePatternInTfVars("{PROJECT_ID}", projectID, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = testutils.ReplacePatternInTfVars("{ACCESS_LEVEL_NAME}", accessLevelName, root)
 	if err != nil {
 		t.Fatal(err)
 	}

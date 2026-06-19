@@ -72,19 +72,6 @@ resource "google_storage_bucket" "cache_bucket" {
   }
 }
 
-resource "google_service_account" "build_sa" {
-  account_id   = "build-sa"
-  display_name = "Service Account for ${var.csr_app_source_repo} Cloud Build triggers"
-  project      = var.project_id
-}
-
-resource "google_storage_bucket_iam_member" "cloudbuild_artifacts_iam" {
-  bucket     = google_storage_bucket.cache_bucket.name
-  role       = "roles/storage.admin"
-  member     = "serviceAccount:${google_service_account.build_sa.email}"
-  depends_on = [google_storage_bucket.cache_bucket]
-}
-
 resource "google_cloudbuild_trigger" "csr_app_build_trigger" {
   count    = local.use_csr ? 1 : 0
   project  = var.project_id
@@ -117,15 +104,6 @@ resource "google_cloudbuild_trigger" "app_build_trigger" {
   service_account = google_service_account.build_sa.id
   filename        = var.app_build_trigger_yaml
   depends_on      = [module.cloudbuild_repositories]
-}
-
-
-# Cloud Build Service Account permissions
-resource "google_project_iam_member" "build_sa_project_iam" {
-  for_each = toset(var.cloudbuild_service_account_roles)
-  project  = var.project_id
-  role     = each.value
-  member   = "serviceAccount:${google_service_account.build_sa.email}"
 }
 
 resource "google_artifact_registry_repository" "image_repo" {

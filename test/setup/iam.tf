@@ -77,3 +77,33 @@ resource "google_project_iam_member" "gke_int_test_singleproj" {
   role    = each.value
   member  = "serviceAccount:${google_service_account.int_test.email}"
 }
+
+resource "google_organization_iam_member" "org_iam_member" {
+  role   = "roles/resourcemanager.organizationAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+  org_id = var.org_id
+}
+
+resource "google_organization_iam_member" "organizationServiceAgent_role" {
+  org_id = var.org_id
+  role   = "roles/resourcemanager.organizationAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+}
+
+resource "google_organization_iam_member" "organization_xpn_role" {
+  org_id = var.org_id
+  role   = "roles/compute.xpnAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+}
+
+resource "google_organization_iam_member" "orgPolicyAdmin_role" {
+  org_id = var.org_id
+  role   = "roles/orgpolicy.policyAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+}
+
+resource "google_organization_iam_member" "policyAdmin_role" {
+  org_id = var.org_id
+  role   = "roles/accesscontextmanager.policyAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+}

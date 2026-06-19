@@ -123,3 +123,9 @@ resource "google_kms_crypto_key_iam_member" "standalone_gcs_sa_kms" {
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${data.google_storage_project_service_account.standalone_gcs_account.email_address}"
 }
+
+resource "google_organization_iam_member" "int_test_access_context_manager_admin" {
+  org_id = var.org_id
+  role   = "roles/accesscontextmanager.policyAdmin"
+  member = "serviceAccount:${google_service_account.int_test.email}"
+}

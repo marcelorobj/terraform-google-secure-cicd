@@ -33,3 +33,8 @@ output "clouddeploy_target_id" {
   description = "ID(s) of Cloud Deploy targets"
   value       = [for target in google_clouddeploy_target.deploy_target : target.id]
 }
+
+output "cd_repo_name" {
+  description = "Name of the CD source repository"
+  value       = local.use_csr ? google_sourcerepo_repository.csr_cd_repository[0].name : null
+}

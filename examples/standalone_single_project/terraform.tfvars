@@ -33,3 +33,5 @@ cd_repository = {
   repository_name = "secure-cd"
   repository_url  = "https://gitlab.com/user/secure-cd.git"
 }
+
+access_level_name = "{ACCESS_LEVEL_NAME}"

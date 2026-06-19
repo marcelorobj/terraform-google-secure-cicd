@@ -48,6 +48,9 @@ spec:
         description: A list of Binary Authorization attestors to create. The first attestor specified in this list will be used as the build-attestor during the CI phase.
         varType: list(string)
         required: true
+      - name: access_level_name
+        description: (VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter.
+        varType: string
       - name: app_build_trigger_yaml
         description: Name of application cloudbuild yaml file
         varType: string
@@ -148,6 +151,8 @@ spec:
         description: Cloud Build Service Account email address
       - name: cache_bucket_name
         description: The name of the storage bucket for cloud build.
+      - name: ci_build_trigger_id
+        description: ID of the CI Cloud Build trigger.
       - name: skaffold_builder_image_tag
         description: The full path to the built Skaffold builder image in Artifact Registry.
       - name: source_repo_name

@@ -14,6 +14,13 @@
 
 package testutils
 
+import (
+	"fmt"
+	"log"
+	"regexp"
+	"time"
+)
+
 var (
 	RetryableTransientErrors = map[string]string{
 		// Error 409: unable to queue the operation
@@ -28,7 +35,7 @@ var (
 		// Error 403: Kubernetes Engine API has not been used in project {} before or it is disabled.
 		".*Error 403.*Kubernetes Engine API is not enabled for this project*": "Kubernetes Engine API not enabled",
 
-		// google_gke_hub_feature - Error: Error waiting to create Feature: Error waiting for Creating Feature: Error code 13, message: an internal error has occurred
+		// google_gke_hub_feature - Error: Error waiting to create Feature: Error code 13, message: an internal error has occurred
 		".*Error waiting for Creating Feature: Error code 13, message: an internal error has occurred*.": "Error creating feature",
 
 		".*Error waiting for Creating Connection: Error code 9, message: Failed to verify authorizer_credential.*": "servicedirectory.networks.access propagation time",
@@ -70,3 +77,37 @@ var (
 		".*Error: Error creating FeatureMembership: Resource already exists - apply blocked by lifecycle params.*": "Duplicated membership request",
 	}
 )
+
+// Retry retries a function a given number of times with a delay between attempts.
+func Retry(retries int, delay time.Duration, f func() error) error {
+	for i := 0; i < retries; i++ {
+		err := f()
+		if err == nil {
+			return nil
+		}
+
+		log.Printf("Attempt %d failed: %v. Retrying in %s...", i+1, err, delay)
+
+		// Check if the error is a transient one
+		isTransient := false
+		errMsg := err.Error()
+		for pattern, desc := range RetryableTransientErrors {
+			if matched, _ := regexp.MatchString(pattern, errMsg); matched {
+				log.Printf("Detected transient error: %s - %s", desc, errMsg)
+				isTransient = true
+				break
+			}
+		}
+
+		if !isTransient && i == retries-1 {
+			return fmt.Errorf("function failed after %d retries with non-transient error: %w", retries, err)
+		} else if !isTransient {
+			// Not a transient error, and not the last retry, so we can't assume it will pass.
+			// Break early for non-retryable errors.
+			return fmt.Errorf("function failed with non-transient error: %w", err)
+		}
+
+		time.Sleep(delay)
+	}
+	return fmt.Errorf("function failed after %d retries", retries)
+}

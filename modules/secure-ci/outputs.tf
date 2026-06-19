@@ -63,3 +63,8 @@ output "skaffold_builder_image_tag" {
   description = "The full path to the built Skaffold builder image in Artifact Registry."
   value       = local.skaffold_builder_image_tag
 }
+
+output "ci_build_trigger_id" {
+  description = "ID of the CI Cloud Build trigger."
+  value       = google_cloudbuild_trigger.app_build_trigger[0].id
+}

@@ -66,6 +66,7 @@ module "ci_pipeline" {
   gar_repo_name_suffix      = "${var.app_name}-image-repo"
   cache_bucket_name         = "${var.app_name}-cloudbuild"
   primary_location          = var.region
+  access_level_name         = var.access_level_name
   attestor_names_prefix     = module.attestors.binauth_attestor_names
   app_build_trigger_yaml    = "cloudbuild-ci.yaml"
   trigger_branch_name       = ".*"

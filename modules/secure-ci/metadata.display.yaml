@@ -26,6 +26,9 @@ spec:
   ui:
     input:
       variables:
+        access_level_name:
+          name: access_level_name
+          title: Access Level Name
         additional_substitutions:
           name: additional_substitutions
           title: Additional Substitutions
