@@ -45,10 +45,10 @@ func TestValidateStartupScript(t *testing.T) {
 	)
 	instanceName := setup.GetStringOutput("gitlab_instance_name")
 	instanceZone := setup.GetStringOutput("gitlab_instance_zone")
-	gitlabSecretProject := setup.GetStringOutput("gitlab_secret_project")
+	gitlabProject := setup.GetStringOutput("gitlab_project_id")
 	// Periodically read logs from startup script running on the VM instance
 	for count := 0; count < 100; count++ {
-		logs, err := readLogsFromVm(t, instanceName, instanceZone, gitlabSecretProject)
+		logs, err := readLogsFromVm(t, instanceName, instanceZone, gitlabProject)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -89,7 +89,7 @@ func TestBootstrapGitlabVM(t *testing.T) {
 	external_url := setup.GetStringOutput("gitlab_url")
 	url := "https://gitlab.example.com"
 	serviceDirectory := setup.GetStringOutput("gitlab_service_directory")
-	gitlabSecretProjectNumber := setup.GetStringOutput("gitlab_project_number")
+	gitlabSecretProjectNumber := setup.GetStringOutput("gitlab_secret_project_number")
 	gitlabPersonalTokenSecretName := setup.GetStringOutput("gitlab_pat_secret_name")
 	gitlabWebhookSecretId := setup.GetStringOutput("webhook_secret_id")
 	gitlabTokenSecretId := fmt.Sprintf("projects/%s/secrets/%s", gitlabSecretProjectNumber, gitlabPersonalTokenSecretName)

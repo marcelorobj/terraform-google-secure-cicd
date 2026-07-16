@@ -126,17 +126,3 @@ steps:
       fi
   waitFor:
     - 'zaproxy-endpoint-scan'
-
-############################### Artifact Promotion ###########################
-
-- name: $_DEFAULT_REGION-docker.pkg.dev/$PROJECT_ID/$_GAR_REPOSITORY/skaffold-builder
-  id: "promote-manifests"
-  entrypoint: "/bin/bash"
-  args:
-    - '-xe'
-    - -c
-    - |
-      gcloud deploy releases promote --release=$_RELEASE_ID --delivery-pipeline=$_CLOUDDEPLOY_PIPELINE_NAME --region=$_DEFAULT_REGION
-
-  waitFor:
-    - 'binary-authorization-checkpoint'

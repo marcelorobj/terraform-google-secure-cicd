@@ -24,14 +24,29 @@ locals {
   }
 }
 
+module "folder_seed" {
+  source              = "terraform-google-modules/folders/google"
+  version             = "~> 5.1"
+  prefix              = random_string.prefix.result
+  parent              = "${var.folder_id}"
+  names               = ["seed"]
+  deletion_protection = false
+}
+
+resource "random_string" "prefix" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
 module "project_standalone" {
   source  = "terraform-google-modules/project-factory/google"
-  version = "~> 14.0"
+  version = "~> 18.0"
 
   name                    = "secure-cicd-singleproj"
   random_project_id       = "true"
   org_id                  = var.org_id
-  folder_id               = var.folder_id
+  folder_id               = module.folder_seed.id
   billing_account         = var.billing_account
   default_service_account = "keep"
 
@@ -92,6 +107,10 @@ module "project_standalone" {
         "roles/source.writer",
       ]
     },
+    {
+      api = "artifactregistry.googleapis.com",
+      roles = []
+    }
   ]
 }
 

@@ -83,3 +83,18 @@ output "cd_repo_url" {
   description = "The URL of the CD repository."
   value       = var.cd_repository.repository_url
 }
+
+output "cluster_membership_ids" {
+  description = "GKE cluster membership IDs."
+  value = { for k, v in module.fleet_membership : k => v.cluster_membership_id }
+}
+
+output "clouddeploy_target_ids" {
+  description = "ID(s) of Cloud Deploy targets"
+  value       = module.cd_pipeline.clouddeploy_target_id
+}
+
+output "ci_service_account" {
+  description = "Service account created and used during the CI infra deployment"
+  value = module.ci_pipeline.build_sa_email
+}

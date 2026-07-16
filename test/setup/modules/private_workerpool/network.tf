@@ -22,8 +22,8 @@ module "vpc" {
   source  = "terraform-google-modules/network/google"
   version = "~> 10.0"
 
-  project_id                             = var.project_id_standalone
-  network_name                           = "eab-vpc-workerpool"
+  project_id                             = module.private_workerpool_project.project_id
+  network_name                           = "secure-cicd-workerpool-network"
   shared_vpc_host                        = false
   delete_default_internet_gateway_routes = true
 
@@ -52,4 +52,6 @@ module "vpc" {
       subnet_private_access = true
     },
   ]
+
+  depends_on = [time_sleep.wait_api_propagation]
 }

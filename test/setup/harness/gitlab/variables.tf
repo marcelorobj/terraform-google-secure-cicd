@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
-variable "project_id_standalone" {
+variable "project_id_workerpool" {
   description = "The project id where Gitlab will run."
+  type        = string
+}
+
+variable "project_id_kms" {
+  description = "The project id where KMS/Secrets will be created on."
   type        = string
 }
 
@@ -34,8 +39,13 @@ variable "cloud_build_sa" {
   type        = string
 }
 
-variable "project_number_standalone" {
-  description = "The seed project number."
+variable "project_number_workerpool" {
+  description = "The workerpool project number."
+  type        = string
+}
+
+variable "project_number_kms" {
+  description = "The kms/secret project number."
   type        = string
 }
 

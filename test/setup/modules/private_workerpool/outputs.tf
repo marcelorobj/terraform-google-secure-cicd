@@ -15,7 +15,7 @@
  */
 
 output "workerpool_project_id" {
-  value = var.project_id_standalone
+  value = module.private_workerpool_project.project_id
 }
 
 output "workerpool_id" {
@@ -23,7 +23,7 @@ output "workerpool_id" {
 }
 
 output "workerpool_project_number" {
-  value = var.project_number_standalone
+  value = module.private_workerpool_project.project_number
 }
 
 output "workerpool_network_name" {

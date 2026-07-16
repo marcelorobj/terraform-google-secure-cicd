@@ -17,38 +17,42 @@
 
 locals {
   gitlab_network_id_without_location = replace(var.network_id, "locations/", "")
-  gitlab_network_url                 = "https://www.googleapis.com/compute/v1/projects/${var.project_id_standalone}/global/networks/${var.network_name}"
+  gitlab_network_url                 = "https://www.googleapis.com/compute/v1/projects/${var.project_id_workerpool}/global/networks/${var.network_name}"
   gitlab_vm_ip_range                 = "10.2.2.0/24"
 }
 
 data "google_project" "gitlab_project" {
-  project_id = var.project_id_standalone
+  project_id = var.project_id_workerpool
 }
 
 data "google_storage_project_service_account" "gitlab_gcs_account" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
 }
 
 resource "google_project_iam_member" "allow_gitlab_bucket_download" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/storage.objectUser"
   member  = "serviceAccount:${var.cloud_build_sa}"
 }
 
 resource "google_project_iam_member" "allow_gitlab_iam_policy_edit" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/resourcemanager.projectIamAdmin"
   member  = "serviceAccount:${var.cloud_build_sa}"
 }
 
 resource "google_service_account" "gitlab_vm" {
   account_id   = "gitlab-vm-sa"
-  project      = var.project_id_standalone
+  project      = var.project_id_workerpool
   display_name = "Custom SA for VM Instance"
 }
 
 resource "google_project_iam_member" "secret_manager_admin_vm_instance" {
-  project = var.project_id_standalone
+  for_each = toset([
+    var.project_id_kms,
+    var.project_id_workerpool
+  ])
+  project = each.value
   role    = "roles/secretmanager.admin"
   member  = google_service_account.gitlab_vm.member
 }
@@ -61,11 +65,11 @@ resource "google_service_account_iam_member" "impersonate" {
 
 resource "google_project_iam_member" "int_test_gitlab_permissions" {
   for_each = toset([
-    "roles/compute.instanceAdmin",
-    "roles/secretmanager.admin"
+    var.project_id_kms,
+    var.project_id_workerpool
   ])
-  project = var.project_id_standalone
-  role    = each.value
+  project = var.project_id_kms
+  role    = "roles/compute.instanceAdmin"
   member  = "serviceAccount:${var.cloud_build_sa}"
 }
 
@@ -118,8 +122,8 @@ resource "time_sleep" "waits_iam_propagation" {
 }
 
 resource "google_compute_instance" "default" {
-  name         = "gitlab"
-  project      = var.project_id_standalone
+  name         = "gitlab-vm"
+  project      = var.project_id_workerpool
   machine_type = "n2-standard-4"
   zone         = "us-central1-a"
 
@@ -137,7 +141,11 @@ resource "google_compute_instance" "default" {
       // Ephemeral public IP
     }
     subnetwork         = google_compute_subnetwork.gitlab_subnet.name
-    subnetwork_project = var.project_id_standalone
+    subnetwork_project = var.project_id_workerpool
+  }
+
+  metadata = {
+    secrets_project_id    = var.project_id_kms
   }
 
   metadata_startup_script = file("./../../scripts/gitlab_self_hosted.sh")
@@ -150,7 +158,7 @@ resource "google_compute_instance" "default" {
 }
 
 resource "google_compute_subnetwork" "gitlab_subnet" {
-  project       = var.project_id_standalone
+  project       = var.project_id_workerpool
   name          = "gitlab-vm-subnet"
   ip_cidr_range = "10.2.2.0/24"
 
@@ -159,7 +167,7 @@ resource "google_compute_subnetwork" "gitlab_subnet" {
 }
 
 resource "google_secret_manager_secret" "gitlab_webhook" {
-  project   = var.project_id_standalone
+  project   = var.project_id_kms
   secret_id = "gitlab-webhook"
   replication {
     auto {}
@@ -181,7 +189,7 @@ resource "google_secret_manager_secret_version" "gitlab_webhook" {
 resource "google_compute_firewall" "allow_iap_ssh" {
   name    = "allow-iap-ssh"
   network = var.network_name
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
 
   allow {
     ports    = [22]
@@ -194,7 +202,7 @@ resource "google_compute_firewall" "allow_iap_ssh" {
 resource "google_compute_firewall" "allow_service_networking" {
   name    = "allow-service-networking"
   network = var.network_name
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
 
   allow {
     protocol = "all"
@@ -206,7 +214,7 @@ resource "google_compute_firewall" "allow_service_networking" {
 resource "google_compute_firewall" "allow_http" {
   name    = "allow-http"
   network = var.network_name
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
 
   allow {
     protocol = "tcp"
@@ -220,7 +228,7 @@ resource "google_compute_firewall" "allow_http" {
 resource "google_compute_firewall" "allow_https" {
   name    = "allow-https"
   network = var.network_name
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
 
   allow {
     protocol = "tcp"
@@ -238,8 +246,8 @@ module "ssl_cert" {
   source  = "terraform-google-modules/cloud-storage/google//modules/simple_bucket"
   version = "~> 10.0"
 
-  name              = "${var.project_id_standalone}-ssl-cert"
-  project_id        = var.project_id_standalone
+  name              = "${var.project_id_workerpool}-ssl-cert"
+  project_id        = var.project_id_workerpool
   location          = "us-central1"
   log_bucket        = var.logging_bucket_name
   log_object_prefix = "ssl-cert"
@@ -268,7 +276,7 @@ resource "google_service_directory_namespace" "gitlab" {
   provider     = google-beta
   namespace_id = "gitlab-namespace"
   location     = "us-central1"
-  project      = var.project_id_standalone
+  project      = var.project_id_workerpool
 }
 
 resource "google_service_directory_service" "gitlab" {
@@ -293,7 +301,7 @@ resource "google_dns_managed_zone" "sd_zone" {
   name        = "peering-zone"
   dns_name    = "example.com."
   description = "Example private DNS Service Directory zone for Gitlab Instance"
-  project     = var.project_id_standalone
+  project     = var.project_id_workerpool
 
   visibility = "private"
 
@@ -311,31 +319,31 @@ resource "google_dns_managed_zone" "sd_zone" {
 }
 
 resource "google_project_iam_member" "sd_viewer" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/servicedirectory.viewer"
-  member  = "serviceAccount:service-${var.project_number_standalone}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+  member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
 }
 
 resource "google_project_iam_member" "access_network" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/servicedirectory.pscAuthorizedService"
-  member  = "serviceAccount:service-${var.project_number_standalone}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+  member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
 }
 
 resource "google_project_iam_member" "cb_agent_pool_user" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/cloudbuild.workerPoolUser"
-  member  = "serviceAccount:service-${var.project_number_standalone}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+  member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
 }
 
 resource "google_project_iam_member" "cb_sa_pool_user" {
-  project = var.project_id_standalone
+  project = var.project_id_workerpool
   role    = "roles/cloudbuild.workerPoolUser"
-  member  = "serviceAccount:${var.project_number_standalone}@cloudbuild.gserviceaccount.com"
+  member  = "serviceAccount:${var.project_number_kms}@cloudbuild.gserviceaccount.com"
 }
 
 resource "google_service_networking_peered_dns_domain" "name" {
-  project    = var.project_id_standalone
+  project    = var.project_id_workerpool
   name       = "example-com"
   network    = var.network_name
   dns_suffix = "example.com."

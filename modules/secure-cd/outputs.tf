@@ -16,7 +16,13 @@
 
 output "deploy_trigger_names" {
   description = "Names of CD Cloud Build triggers"
-  value       = [for trigger in google_cloudbuild_trigger.deploy_trigger : trigger.name]
+  value = [
+    for env, config in var.deploy_branch_clusters : try(
+      google_cloudbuild_trigger.deploy_trigger_unknown[env].name,
+      google_cloudbuild_trigger.deploy_trigger_known[env].name
+    )
+    if config.next_env != ""
+  ]
 }
 
 output "binauthz_policy_required_attestations" {

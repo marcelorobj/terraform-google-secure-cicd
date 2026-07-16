@@ -32,7 +32,7 @@ output "sa_email" {
 }
 
 output "folder_id" {
-  value = var.folder_id
+  value = module.folder_seed.id
 }
 
 output "org_id" {

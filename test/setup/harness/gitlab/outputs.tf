@@ -23,11 +23,11 @@ output "gitlab_pat_secret_name" {
 }
 
 output "gitlab_project_id" {
-  value = var.project_id_standalone
+  value = var.project_id_workerpool
 }
 
 output "gitlab_project_number" {
-  value = var.project_number_standalone
+  value = var.project_number_workerpool
 }
 
 output "gitlab_url" {
@@ -39,7 +39,11 @@ output "gitlab_internal_ip" {
 }
 
 output "gitlab_secret_project" {
-  value = var.project_id_standalone
+  value = var.project_id_kms
+}
+
+output "gitlab_secret_project_number" {
+  value = var.project_number_kms
 }
 
 output "gitlab_instance_zone" {
@@ -52,6 +56,10 @@ output "gitlab_instance_name" {
 
 output "gitlab_service_directory" {
   value = google_service_directory_service.gitlab.id
+}
+
+output "gitlab_vm_sa" {
+  value = google_service_account.gitlab_vm.email
 }
 
 output "gitlab_ssl_bucket_name" {

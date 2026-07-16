@@ -39,7 +39,8 @@ locals {
     "roles/viewer",
     "roles/secretmanager.admin",
     "roles/servicedirectory.admin",
-    "roles/dns.admin"
+    "roles/dns.admin",
+    "roles/logging.logWriter"
   ]
   gke_int_required_roles = [
     "roles/compute.networkAdmin",
@@ -106,4 +107,17 @@ resource "google_organization_iam_member" "policyAdmin_role" {
   org_id = var.org_id
   role   = "roles/accesscontextmanager.policyAdmin"
   member = "serviceAccount:${google_service_account.int_test.email}"
+}
+
+resource "google_folder_iam_member" "int_test_connection_admin" {
+  for_each = toset(["roles/resourcemanager.projectCreator", "roles/resourcemanager.folderCreator", "roles/owner", "roles/iam.serviceAccountTokenCreator", "roles/iam.serviceAccountUser", ])
+  folder   = module.folder_seed.id
+  role     = each.value
+  member   = "serviceAccount:${google_service_account.int_test.email}"
+}
+
+resource "google_billing_account_iam_member" "tf_billing_admin" {
+  billing_account_id = var.billing_account
+  role               = "roles/billing.admin"
+  member             = "serviceAccount:${google_service_account.int_test.email}"
 }

@@ -35,6 +35,17 @@ resource "google_service_account" "clouddeploy_execution_sa" {
   display_name = "clouddeploy-execution-sa"
 }
 
+resource "google_access_context_manager_access_level_condition" "additional_member_condition" {
+  access_level = var.access_level_name
+
+  members = [
+    "serviceAccount:${google_service_account.clouddeploy_execution_sa.email}"
+  ]
+  depends_on = [
+    time_sleep.wait_access_level_propagation
+  ]
+}
+
 resource "google_project_iam_member" "cd_sa_iam" {
   for_each = toset(local.cd_sa_required_roles)
 
@@ -130,4 +141,24 @@ resource "google_secret_manager_secret_iam_member" "gitlab_pat_accessor" {
 
   role   = "roles/secretmanager.secretAccessor"
   member = "serviceAccount:${var.cloudbuild_service_account}"
+}
+
+resource "google_project_service_identity" "clouddeploy_sa" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "clouddeploy.googleapis.com"
+}
+
+resource "google_project_iam_member" "clouddeploy_service_agent_workerpool_access" {
+  project = split("/", var.cloudbuild_private_pool)[1]
+  role    = "roles/cloudbuild.workerPoolUser"
+  member  = "serviceAccount:${google_project_service_identity.clouddeploy_sa.email}"
+}
+
+resource "time_sleep" "wait_access_level_propagation" {
+  depends_on = [
+    google_service_account.clouddeploy_execution_sa,
+  ]
+  destroy_duration = "5m"
+  create_duration  = "2m"
 }

@@ -27,25 +27,43 @@ import (
 
 func TestVPCSC(t *testing.T) {
 	vpcPath := "../../setup/harness/service_perimeter"
+	gitLabPath := "../../setup/harness/gitlab"
 
 	setupOutput := tft.NewTFBlueprintTest(t, tft.WithTFDir("../../setup"))
+	gitLab := tft.NewTFBlueprintTest(t, tft.WithTFDir(gitLabPath))
+
 	projectID := setupOutput.GetStringOutput("project_id_standalone")
 	projectNumber := setupOutput.GetStringOutput("project_number_standalone")
+	gitLabProjectNumber := gitLab.GetStringOutput("gitlab_project_number")
+	gitLabSA := gitLab.GetStringOutput("gitlab_vm_sa")
 	serviceAccount := setupOutput.GetTFSetupStringOutput("sa_email")
 	addAccessLevelMembers := strings.Split(os.Getenv("TF_VAR_access_level_members"), ",")
+
 	protected_projects := []string{}
 
 	accessLevelMembers := []string{
-		fmt.Sprintf("serviceAccount:%s", serviceAccount),
 		"serviceAccount:cloud-build@system.gserviceaccount.com",
+		fmt.Sprintf("serviceAccount:%s", serviceAccount),
 		fmt.Sprintf("serviceAccount:service-%s@gcp-sa-cloudbuild.iam.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:%s@cloudbuild.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:%s-compute@developer.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:%s@cloudservices.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:service-%s@container-engine-robot.iam.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:service-%s@compute-system.iam.gserviceaccount.com", projectNumber),
+		fmt.Sprintf("serviceAccount:service-%s@gcp-sa-artifactregistry.iam.gserviceaccount.com", projectNumber),
 	}
 	accessLevelMembers = append(accessLevelMembers, addAccessLevelMembers...)
 	t.Logf("accessLevelMembers: %v", accessLevelMembers)
+
+	protected_projects = append(protected_projects, projectNumber)
+
 	vars := map[string]interface{}{
-		"access_level_members": accessLevelMembers,
-		"protected_projects":   protected_projects,
-		"project_id":           projectID,
+		"access_level_members":          accessLevelMembers,
+		"gitlab_sa":                     gitLabSA,
+		"protected_projects":            protected_projects,
+		"logging_bucket_project_number": projectNumber,
+		"gitlab_project_number":         gitLabProjectNumber,
+		"project_id":                    projectID,
 	}
 
 	vpcsc := tft.NewTFBlueprintTest(t,

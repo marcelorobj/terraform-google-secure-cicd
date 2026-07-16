@@ -352,16 +352,16 @@ locals {
       }
     },
     {
-      title = "Allow Services from ${var.project_id} to ${var.project_id}"
+      title = "Allow Services to ${var.project_id}"
       from = {
         identity_type = "ANY_IDENTITY"
         sources = {
-          resources = ["projects/${data.google_project.project.number}"]
+          resources = [for i in var.protected_projects : "projects/${i}"]
         }
       }
       to = {
         resources = [
-          "projects/${data.google_project.project.number}" //worker pool project
+          "projects/${var.gitlab_project_number}" //worker pool project
         ]
         operations = {
           "servicedirectory.googleapis.com" = { methods = ["*"] }
@@ -369,6 +369,7 @@ locals {
           "clouddeploy.googleapis.com"      = { methods = ["*"] }
           "pubsub.googleapis.com"           = { methods = ["*"] }
           "compute.googleapis.com"          = { methods = ["SubnetworksService.Get"] }
+          "secretmanager.googleapis.com"    = { methods = ["*"] }
         }
       }
     }
@@ -376,31 +377,16 @@ locals {
 
   ingress_rules = [
     {
-      title = "Ingress to Required Resources on Single Project"
+      title = "Ingress from Private Worker Pool Project to Single Project project"
       from = {
-        sources       = { access_levels = [module.access_level_members.name] }
-        identity_type = "ANY_IDENTITY"
-        identities    = []
+        sources    = { resources = ["projects/${var.gitlab_project_number}"] }
+        identities = ["serviceAccount:service-${var.gitlab_project_number}@gs-project-accounts.iam.gserviceaccount.com", "serviceAccount:${var.gitlab_sa}"] //gitlab storage identity
       },
       to = {
-        resources = ["projects/${data.google_project.project.number}"],
+        resources = ["projects/${var.logging_bucket_project_number}"], //logging-kms bucket
         operations = {
-          "secretmanager.googleapis.com"        = { methods = ["*"] }
-          "cloudkms.googleapis.com"             = { methods = ["*"] }
-          "cloudbuild.googleapis.com"           = { methods = ["*"] }
-          "clouddeploy.googleapis.com"          = { methods = ["*"] }
-          "containeranalysis.googleapis.com"    = { methods = ["*"] }
-          "binaryauthorization.googleapis.com"  = { methods = ["*"] }
-          "serviceusage.googleapis.com"         = { methods = ["*"] }
-          "artifactregistry.googleapis.com"     = { methods = ["*"] }
-          "iam.googleapis.com"                  = { methods = ["*"] }
-          "cloudresourcemanager.googleapis.com" = { methods = ["*"] }
-          "compute.googleapis.com"              = { methods = ["*"] }
-          "storage.googleapis.com"              = { methods = ["*"] }
-          "container.googleapis.com"            = { methods = ["*"] }
-          "pubsub.googleapis.com"               = { methods = ["*"] }
-          "gkehub.googleapis.com"               = { methods = ["*"] }
-          "logging.googleapis.com"              = { methods = ["*"] }
+          "cloudkms.googleapis.com" = { methods = ["*"] }
+          "secretmanager.googleapis.com" = { methods = ["*"] }
         }
       }
     }
@@ -446,6 +432,7 @@ resource "google_access_context_manager_access_policy" "access_policy" {
   parent = "organizations/${var.org_id}"
   scopes = [var.folder_id]
   title  = "Secure CI/CD policy for ${var.folder_id}"
+  depends_on              = [time_sleep.destroy_wait_propagation]
 }
 
 module "access_level_members" {
@@ -456,6 +443,7 @@ module "access_level_members" {
   name               = local.access_level_name
   members            = local.access_level_members
   combining_function = "OR"
+  depends_on              = [time_sleep.destroy_wait_propagation]
 }
 
 module "regular_service_perimeter" {
@@ -476,6 +464,7 @@ module "regular_service_perimeter" {
   vpc_accessible_services_dry_run = ["*"]
   restricted_services_dry_run     = local.supported_restricted_service
   restricted_services             = var.service_perimeter_mode == "ENFORCE" ? local.supported_restricted_service : []
+  depends_on              = [time_sleep.destroy_wait_propagation]
 }
 
 resource "time_sleep" "wait_vpc_sc_propagation" {

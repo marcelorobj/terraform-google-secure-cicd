@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/gcloud"
 	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/git"
 	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/tft"
 	"github.com/stretchr/testify/assert"
@@ -155,8 +156,9 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 	defer os.RemoveAll(workspaceFolder)
 
 	vars := map[string]interface{}{
-		"project_id": projectID,
-		"region":     region,
+		"project_id":      projectID,
+		"region":          region,
+		"repository_type": "GITLAB",
 	}
 
 	standaloneSingleProjT := tft.NewTFBlueprintTest(t,
@@ -165,15 +167,67 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 	)
 
 	standaloneSingleProjT.DefineVerify(func(assert *assert.Assertions) {
-		// Verifier's Note: A successful apply is just the beginning.
-		// We will now query the data plane to assert the state of our deployed resources.
-
 		ciRepoName := standaloneSingleProjT.GetStringOutput("ci_repo_name")
 		cdRepoName := standaloneSingleProjT.GetStringOutput("cd_repo_name")
-		setupGitOperations(t, blueprintFolder, workspaceFolder, ciRepoName, cdRepoName)
+
+		projectID := standaloneSingleProjT.GetStringOutput("project_id")
+		region := standaloneSingleProjT.GetStringOutput("region")
+		garRepoName := standaloneSingleProjT.GetStringOutput("gar_repo_name")
+		ciBuildTriggerID := standaloneSingleProjT.GetStringOutput("ci_build_trigger_id")
+		ciServiceAccount := standaloneSingleProjT.GetStringOutput("ci_service_account")
+		cloudDeployPipelineID := standaloneSingleProjT.GetStringOutput("clouddeploy_pipeline_id")
 
 		standaloneSingleProjT.DefaultVerify(assert)
 
+		setupGitOperations(t, blueprintFolder, workspaceFolder, ciRepoName, cdRepoName)
+
+		prj := gcloud.Runf(t, "projects describe %s", projectID)
+		assert.Equal("ACTIVE", prj.Get("lifecycleState").String(), fmt.Sprintf("Project %s should be ACTIVE", projectID))
+
+		if garRepoName != "" {
+			art := gcloud.Runf(t, "artifacts repositories describe %s --project %s --location %s", garRepoName, projectID, region)
+			assert.Equal("DOCKER", art.Get("format").String(), fmt.Sprintf("Repository %s should have type DOCKER", garRepoName))
+		}
+
+		ciTriggerParts := strings.Split(ciBuildTriggerID, "/")
+		ciUuid := ciTriggerParts[len(ciTriggerParts)-1]
+
+		if ciBuildTriggerID != "" {
+			buildTriggerOp := gcloud.Runf(t, "builds triggers describe %s --project=%s --region=%s", ciUuid, projectID, region)
+
+			expectedSA := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, ciServiceAccount)
+			assert.Equal(expectedSA, buildTriggerOp.Get("serviceAccount").String(), fmt.Sprintf("Cloud Build trigger %s should use service account %s", ciBuildTriggerID, expectedSA))
+		}
+
+		if cloudDeployPipelineID != "" {
+			pipelineOp := gcloud.Runf(t, "deploy delivery-pipelines describe %s --project %s --region %s", cloudDeployPipelineID, projectID, region)
+			assert.NotEmpty(pipelineOp.Get("Delivery Pipeline.name").String(), fmt.Sprintf("Cloud Deploy pipeline %s should exist", cloudDeployPipelineID))
+		}
+
+		gkeClusters := standaloneSingleProjT.GetJsonOutput("gke_cluster_names").Map()
+		for env, clusterName := range gkeClusters {
+			clusterOp := gcloud.Runf(t, "container clusters describe %s --project %s --region %s", clusterName.String(), projectID, region)
+			assert.Equal("RUNNING", clusterOp.Get("status").String(), fmt.Sprintf("GKE cluster %s for env %s should be RUNNING", clusterName.String(), env))
+		}
+
+		cdTargets := standaloneSingleProjT.GetJsonOutput("clouddeploy_target_ids").Array()
+		for _, target := range cdTargets {
+			targetName := target.String()
+
+			deployTargetOp := gcloud.Runf(t, "deploy targets describe %s --project %s --region %s", targetName, projectID, region)
+			assert.NotEmpty(deployTargetOp.Get("Target.name").String(), fmt.Sprintf("Cloud deploy target %s should exist", targetName))
+		}
 	})
+
+	standaloneSingleProjT.DefineTeardown(func(assert *assert.Assertions) {
+		// removes firewall rules created by the service but not being deleted.
+		firewallRules := gcloud.Runf(t, "compute firewall-rules list  --project %s --filter=\"mcsd\"", projectID).Array()
+		for i := range firewallRules {
+			gcloud.Runf(t, "compute firewall-rules delete %s --project %s -q", firewallRules[i].Get("name"), projectID)
+		}
+		standaloneSingleProjT.DefaultTeardown(assert)
+
+	})
+
 	standaloneSingleProjT.Test()
 }

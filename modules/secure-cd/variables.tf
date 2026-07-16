@@ -88,6 +88,12 @@ variable "cloudbuild_service_account" {
   type        = string
 }
 
+variable "access_level_name" {
+  description = "(VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter."
+  type        = string
+  default     = null
+}
+
 variable "repository_type" {
   description = "The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'."
   type        = string

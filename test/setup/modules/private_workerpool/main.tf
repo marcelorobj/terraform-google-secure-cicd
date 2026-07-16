@@ -14,8 +14,46 @@
  * limitations under the License.
  */
 
+module "private_workerpool_project" {
+  source  = "terraform-google-modules/project-factory/google"
+  version = "~> 18.2"
+
+  name                     = "secure-cicd-workerpool"
+  random_project_id        = "true"
+  random_project_id_length = 4
+  org_id                   = var.org_id
+  folder_id                = var.folder_id
+  billing_account          = var.billing_account
+  default_service_account  = "KEEP"
+
+  auto_create_network = true
+
+
+
+  activate_apis = [
+    "cloudbilling.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudkms.googleapis.com",
+    "compute.googleapis.com",
+    "dns.googleapis.com",
+    "iam.googleapis.com",
+    "secretmanager.googleapis.com",
+    "servicedirectory.googleapis.com",
+    "servicemanagement.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "serviceusage.googleapis.com",
+    "storage.googleapis.com",
+  ]
+}
+
+resource "time_sleep" "wait_api_propagation" {
+  depends_on = [module.private_workerpool_project]
+
+  create_duration = "60s"
+}
+
 resource "google_compute_global_address" "worker_range" {
-  project       = var.project_id_standalone
+  project       = module.private_workerpool_project.project_id
   name          = "worker-pool-range"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
@@ -23,24 +61,25 @@ resource "google_compute_global_address" "worker_range" {
   prefix_length = 24
   network       = module.vpc.network_name
 
+  depends_on = [time_sleep.wait_api_propagation]
 }
 
 resource "google_service_networking_connection" "gitlab_worker_pool_conn" {
   network                 = module.vpc.network_id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.worker_range.name]
-  depends_on              = [google_project_service.servicenetworking]
+  depends_on              = [google_project_service.servicenetworking, module.private_workerpool_project]
 }
 
 resource "google_project_service" "servicenetworking" {
-  project            = var.project_id_standalone
+  project            = module.private_workerpool_project.project_id
   service            = "servicenetworking.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_cloudbuild_worker_pool" "pool" {
   name     = "cb-pool"
-  project  = var.project_id_standalone
+  project  = module.private_workerpool_project.project_id
   location = var.workpool_region
   worker_config {
     disk_size_gb   = 100
@@ -52,7 +91,7 @@ resource "google_cloudbuild_worker_pool" "pool" {
     peered_network_ip_range = "/24"
   }
 
-  depends_on = [google_service_networking_connection.gitlab_worker_pool_conn]
+  depends_on = [google_service_networking_connection.gitlab_worker_pool_conn, module.private_workerpool_project]
 }
 
 resource "time_sleep" "wait_service_network_peering" {

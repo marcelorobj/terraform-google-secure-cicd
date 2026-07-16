@@ -88,6 +88,7 @@ module "cd_pipeline" {
   cd_repository              = var.cd_repository
   deploy_branch_clusters     = local.deploy_branch_clusters
   app_deploy_trigger_yaml    = "cloudbuild-cd.yaml"
+  access_level_name         = var.access_level_name
   cache_bucket_name          = module.ci_pipeline.cache_bucket_name
   cloudbuild_private_pool    = var.private_worker_pool_id == null ? module.cloudbuild_private_pool.workerpool_id : var.private_worker_pool_id
   clouddeploy_pipeline_name  = local.clouddeploy_pipeline_name

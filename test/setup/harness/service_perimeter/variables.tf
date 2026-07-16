@@ -24,9 +24,24 @@ variable "folder_id" {
   type        = string
 }
 
+variable "gitlab_sa" {
+  description = "SA used by gitlab instance."
+  type        = string
+}
+
 variable "project_id" {
   type        = string
   description = "Project ID in which all resources will be deployed"
+}
+
+variable "gitlab_project_number" {
+  type        = string
+  description = "Project number in which the gitlab VM and the private worker pool will be deployed"
+}
+
+variable "logging_bucket_project_number" {
+  type        = string
+  description = "Project number in which the attestors, logging buckets and KMS keys will be deployed"
 }
 
 variable "protected_projects" {
