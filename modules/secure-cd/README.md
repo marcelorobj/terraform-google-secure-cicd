@@ -134,6 +134,7 @@ module "cd_pipeline" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| access\_level\_name | (VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter. | `string` | `null` | no |
 | additional\_substitutions | Parameters to be substituted in the build specification. All keys should begin with an underscore. | `map(string)` | `{}` | no |
 | app\_deploy\_trigger\_yaml | Name of application cloudbuild yaml file for deployment | `string` | n/a | yes |
 | cache\_bucket\_name | cloud build artifact bucket name | `string` | n/a | yes |
@@ -146,7 +147,6 @@ module "cd_pipeline" {
 | gar\_repo\_name | Docker artifact registry repo to store app build images | `string` | n/a | yes |
 | github\_auth | Authentication configuration for GitHub. Required only if repo\_type is 'GITHUBv2'. | <pre>object({<br>    secret_id         = string<br>    app_id_secret_id  = string<br>    secret_project_id = string<br>  })</pre> | `null` | no |
 | gitlab\_auth | Authentication configuration for GitLab. Required only if repo\_type is 'GITLABv2'. | <pre>object({<br>    read_authorizer_credential_secret_id = string<br>    authorizer_credential_secret_id      = string<br>    webhook_secret_id                    = string<br>    enterprise_host_uri                  = optional(string)<br>    enterprise_service_directory         = optional(string)<br>    enterprise_ca_certificate            = optional(string)<br>    secret_project_id                    = string<br>  })</pre> | `null` | no |
-| labels | A set of key/value label pairs to assign to the resources deployed by this blueprint. | `map(string)` | `{}` | no |
 | primary\_location | Region used for key-ring | `string` | n/a | yes |
 | project\_id | Project ID for CICD Pipeline Project | `string` | n/a | yes |
 | repository\_type | The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'. | `string` | n/a | yes |

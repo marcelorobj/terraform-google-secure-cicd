@@ -39,8 +39,11 @@ For simplified deployment and demonstration purposes, this blueprint creates GKE
 | ci\_build\_trigger\_id | ID of the CI Cloud Build trigger |
 | ci\_repo\_name | Name of the CI source repository |
 | ci\_repo\_url | The URL of the CI repository. |
+| ci\_service\_account | Service account created and used during the CI infra deployment |
 | cloudbuild\_workerpool\_id | ID of the Cloud Build private worker pool |
 | clouddeploy\_pipeline\_id | ID of the Cloud Deploy delivery pipeline |
+| clouddeploy\_target\_ids | ID(s) of Cloud Deploy targets |
+| cluster\_membership\_ids | GKE cluster membership IDs. |
 | gar\_repo\_name | Name of the Artifact Registry repository |
 | gitlab\_url | The URL of the GitLab instance. |
 | gke\_cluster\_names | Map of GKE Cluster names by environment |

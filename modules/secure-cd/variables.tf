@@ -77,12 +77,6 @@ variable "clouddeploy_pipeline_name" {
   type        = string
 }
 
-variable "labels" {
-  description = "A set of key/value label pairs to assign to the resources deployed by this blueprint."
-  type        = map(string)
-  default     = {}
-}
-
 variable "cloudbuild_service_account" {
   description = "Cloud Build SA email address"
   type        = string

@@ -25,6 +25,10 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "> 4, < 8"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.12.0"
+    }
   }
 
   provider_meta "google" {

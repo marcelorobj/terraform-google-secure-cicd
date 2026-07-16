@@ -85,14 +85,13 @@ spec:
         description: Cloud Deploy pipeline name
         varType: string
         required: true
-      - name: labels
-        description: A set of key/value label pairs to assign to the resources deployed by this blueprint.
-        varType: map(string)
-        defaultValue: {}
       - name: cloudbuild_service_account
         description: Cloud Build SA email address
         varType: string
         required: true
+      - name: access_level_name
+        description: (VPC-SC) Access Level full name. When providing this variable, additional identities will be added to the access level, these are required to work within an enforced VPC-SC Perimeter.
+        varType: string
       - name: repository_type
         description: The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'.
         varType: string

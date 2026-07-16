@@ -385,7 +385,7 @@ locals {
       to = {
         resources = ["projects/${var.logging_bucket_project_number}"], //logging-kms bucket
         operations = {
-          "cloudkms.googleapis.com" = { methods = ["*"] }
+          "cloudkms.googleapis.com"      = { methods = ["*"] }
           "secretmanager.googleapis.com" = { methods = ["*"] }
         }
       }
@@ -429,10 +429,10 @@ resource "random_string" "random_access_level_suffix" {
 *******************************************/
 
 resource "google_access_context_manager_access_policy" "access_policy" {
-  parent = "organizations/${var.org_id}"
-  scopes = [var.folder_id]
-  title  = "Secure CI/CD policy for ${var.folder_id}"
-  depends_on              = [time_sleep.destroy_wait_propagation]
+  parent     = "organizations/${var.org_id}"
+  scopes     = [var.folder_id]
+  title      = "Secure CI/CD policy for ${var.folder_id}"
+  depends_on = [time_sleep.destroy_wait_propagation]
 }
 
 module "access_level_members" {
@@ -443,7 +443,7 @@ module "access_level_members" {
   name               = local.access_level_name
   members            = local.access_level_members
   combining_function = "OR"
-  depends_on              = [time_sleep.destroy_wait_propagation]
+  depends_on         = [time_sleep.destroy_wait_propagation]
 }
 
 module "regular_service_perimeter" {
@@ -464,7 +464,7 @@ module "regular_service_perimeter" {
   vpc_accessible_services_dry_run = ["*"]
   restricted_services_dry_run     = local.supported_restricted_service
   restricted_services             = var.service_perimeter_mode == "ENFORCE" ? local.supported_restricted_service : []
-  depends_on              = [time_sleep.destroy_wait_propagation]
+  depends_on                      = [time_sleep.destroy_wait_propagation]
 }
 
 resource "time_sleep" "wait_vpc_sc_propagation" {

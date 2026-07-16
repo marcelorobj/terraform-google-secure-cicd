@@ -28,7 +28,7 @@ module "folder_seed" {
   source              = "terraform-google-modules/folders/google"
   version             = "~> 5.1"
   prefix              = random_string.prefix.result
-  parent              = "${var.folder_id}"
+  parent              = var.folder_id
   names               = ["seed"]
   deletion_protection = false
 }
@@ -108,7 +108,7 @@ module "project_standalone" {
       ]
     },
     {
-      api = "artifactregistry.googleapis.com",
+      api   = "artifactregistry.googleapis.com",
       roles = []
     }
   ]

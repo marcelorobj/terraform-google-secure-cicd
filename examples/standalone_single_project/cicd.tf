@@ -54,9 +54,9 @@ locals {
   clouddeploy_pipeline_name = "${var.app_name}-pipeline"
 }
 
-# Secure-CI
 module "ci_pipeline" {
-  source = "../../modules/secure-ci"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-ci"
+  version = "~> 1.0"
 
   project_id                = var.project_id
   repository_type           = var.repository_type
@@ -76,7 +76,8 @@ module "ci_pipeline" {
 }
 
 module "cd_pipeline" {
-  source = "../../modules/secure-cd"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-cd"
+  version = "~> 1.0"
 
   project_id       = var.project_id
   primary_location = var.region
@@ -88,7 +89,7 @@ module "cd_pipeline" {
   cd_repository              = var.cd_repository
   deploy_branch_clusters     = local.deploy_branch_clusters
   app_deploy_trigger_yaml    = "cloudbuild-cd.yaml"
-  access_level_name         = var.access_level_name
+  access_level_name          = var.access_level_name
   cache_bucket_name          = module.ci_pipeline.cache_bucket_name
   cloudbuild_private_pool    = var.private_worker_pool_id == null ? module.cloudbuild_private_pool.workerpool_id : var.private_worker_pool_id
   clouddeploy_pipeline_name  = local.clouddeploy_pipeline_name
@@ -99,9 +100,9 @@ module "cd_pipeline" {
 }
 
 
-# Cloud Build Private Pool
 module "cloudbuild_private_pool" {
-  source = "../../modules/cloudbuild-private-pool"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
+  version = "~> 1.0"
 
   count = var.private_worker_pool_id == null ? 1 : 0
 
@@ -121,7 +122,8 @@ module "cloudbuild_private_pool" {
 }
 
 module "attestors" {
-  source = "../../modules/attestor"
+  source  = "GoogleCloudPlatform/secure-cicd/google//modules/attestor"
+  version = "~> 1.0"
 
   project_id = var.project_id
 

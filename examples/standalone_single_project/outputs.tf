@@ -86,7 +86,7 @@ output "cd_repo_url" {
 
 output "cluster_membership_ids" {
   description = "GKE cluster membership IDs."
-  value = { for k, v in module.fleet_membership : k => v.cluster_membership_id }
+  value       = { for k, v in module.fleet_membership : k => v.cluster_membership_id }
 }
 
 output "clouddeploy_target_ids" {
@@ -96,5 +96,5 @@ output "clouddeploy_target_ids" {
 
 output "ci_service_account" {
   description = "Service account created and used during the CI infra deployment"
-  value = module.ci_pipeline.build_sa_email
+  value       = module.ci_pipeline.build_sa_email
 }

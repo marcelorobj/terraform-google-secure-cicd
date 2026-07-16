@@ -145,7 +145,7 @@ resource "google_compute_instance" "default" {
   }
 
   metadata = {
-    secrets_project_id    = var.project_id_kms
+    secrets_project_id = var.project_id_kms
   }
 
   metadata_startup_script = file("./../../scripts/gitlab_self_hosted.sh")
