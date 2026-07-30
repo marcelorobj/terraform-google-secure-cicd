@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-20.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,13 +28,25 @@ locals {
     repository = values(module.cloudbuild_repositories[0].cloud_build_repositories_2nd_gen_repositories)[0].id
   }
   deploy_projects = distinct([
-    for env in var.deploy_branch_clusters : env.project_id
+    for env_name, env_config in var.deploy_branch_clusters : env_config.project_id
   ])
 
   binary_authorization_map = zipmap(
     local.deploy_projects,
     [for project_id in local.deploy_projects : [
-      for env in var.deploy_branch_clusters : env if env.project_id == project_id
+      for env_name, env_config in var.deploy_branch_clusters : env_config if env_config.project_id == project_id
     ]]
   )
+
+  env_by_sorted_key = {
+    for k, v in var.deploy_branch_clusters :
+    format("%03d-%s", v.env_number, k) => v
+  }
+
+  sorted_env_keys = sort(keys(local.env_by_sorted_key))
+
+  ordered_deploy_branch_clusters = [
+    for k in local.sorted_env_keys :
+    local.env_by_sorted_key[k]
+  ]
 }

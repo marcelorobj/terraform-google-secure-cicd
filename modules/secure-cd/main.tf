@@ -48,10 +48,10 @@ module "cloudbuild_repositories" {
 }
 
 resource "google_clouddeploy_target" "deploy_target" {
-  for_each = var.deploy_branch_clusters
+  for_each = { for env_obj in local.ordered_deploy_branch_clusters : env_obj.name => env_obj }
 
-  name        = each.value.target_type == "anthos_cluster" ? "${each.value.anthos_membership}-target" : each.value.target_type == "gke" ? "${each.value.cluster}-target" : "${each.key}-target"
-  description = "Target for ${each.key} environment"
+  name        = each.value.target_type == "anthos_cluster" ? "${each.value.anthos_membership}-target" : each.value.target_type == "gke" ? "${each.value.cluster}-target" : "${each.value.name}-target"
+  description = "Target for ${each.value.name} environment"
   location    = each.value.location
   project     = var.project_id
 
@@ -96,9 +96,9 @@ resource "google_clouddeploy_delivery_pipeline" "pipeline" {
 
   serial_pipeline {
     dynamic "stages" {
-      for_each = var.deploy_branch_clusters
+      for_each = local.ordered_deploy_branch_clusters
       content {
-        target_id = google_clouddeploy_target.deploy_target[stages.key].name
+        target_id = google_clouddeploy_target.deploy_target[stages.value.name].name
       }
     }
   }

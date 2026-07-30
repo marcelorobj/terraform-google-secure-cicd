@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ variable "cd_repository" {
     repository_name = string
     repository_url  = string
   })
-  description = "The CI repository to configure. The key is a short name for the service."
+  description = "The CD repository to configure. The key is a short name for the service."
   default     = null
 }
 
@@ -111,7 +111,14 @@ variable "labels" {
 
 variable "private_worker_pool_id" {
   description = "Optional private worker pool id if using already existing worker pool"
-  default     = null
+  validation {
+    condition     = var.private_worker_pool_id != ""
+    error_message = "private_worker_pool_id cannot be empty, only null or a valid value."
+  }
+  validation {
+    condition     = var.private_worker_pool_id == null ? true : can(regex("^projects/[a-z0-9-]+/locations/[a-z0-9-]+/workerPools/[a-z0-9-]+$", var.private_worker_pool_id))
+    error_message = "The private_worker_pool_id must follow the exact format: 'projects/PROJECT/locations/LOCATION/workerPools/POOL_NAME'."
+  }
 }
 
 variable "network_name" {

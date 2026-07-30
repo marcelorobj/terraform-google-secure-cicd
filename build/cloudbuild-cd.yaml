@@ -20,7 +20,6 @@ options:
   pool:
     name: $_CLOUDBUILD_PRIVATE_POOL
   substitution_option: 'ALLOW_LOOSE'
-  # machineType: 'E2_HIGHCPU_32'
 artifacts:
   objects:
     location: gs://$_CACHE_BUCKET_NAME/artifacts/$BRANCH_NAME
@@ -94,8 +93,6 @@ steps:
     - '-xe'
     - -c
     - |
-      # Only run this step if there is an attestor supplied in the trigger substitutions
-      # This step will be skipped for the final environment, when there are no more attestations to add
       if [ -n "${_ATTESTOR_NAME}" ]; then
         gcloud config set project ${PROJECT_ID}
 

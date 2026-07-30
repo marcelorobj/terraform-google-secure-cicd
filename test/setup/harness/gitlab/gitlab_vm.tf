@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -318,21 +318,14 @@ resource "google_dns_managed_zone" "sd_zone" {
   }
 }
 
-resource "google_project_iam_member" "sd_viewer" {
+resource "google_project_iam_member" "cloudbuild_workerpool_permissions" {
+  for_each = toset([
+    "roles/servicedirectory.viewer",
+    "roles/servicedirectory.pscAuthorizedService",
+    "roles/cloudbuild.workerPoolUser"
+  ])
   project = var.project_id_workerpool
-  role    = "roles/servicedirectory.viewer"
-  member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
-}
-
-resource "google_project_iam_member" "access_network" {
-  project = var.project_id_workerpool
-  role    = "roles/servicedirectory.pscAuthorizedService"
-  member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
-}
-
-resource "google_project_iam_member" "cb_agent_pool_user" {
-  project = var.project_id_workerpool
-  role    = "roles/cloudbuild.workerPoolUser"
+  role    = each.key
   member  = "serviceAccount:service-${var.project_number_kms}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
 }
 

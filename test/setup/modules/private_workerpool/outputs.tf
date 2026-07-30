@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ output "workerpool_project_id" {
 }
 
 output "workerpool_id" {
-  value = google_cloudbuild_worker_pool.pool.id
+  value = module.cloudbuild_private_pool.workerpool_id
 }
 
 output "workerpool_project_number" {
@@ -27,18 +27,14 @@ output "workerpool_project_number" {
 }
 
 output "workerpool_network_name" {
-  value = module.vpc.network_name
+  value = module.cloudbuild_private_pool.workerpool_network_name
 }
 
 output "workerpool_network_id" {
-  value = module.vpc.network_id
+  value = module.cloudbuild_private_pool.workerpool_network_id
 }
 
 output "workerpool_network_self_link" {
-  value = module.vpc.network_self_link
-}
-
-output "workerpool_subnets_self_links" {
-  value = module.vpc.subnets_self_links
+  value = module.cloudbuild_private_pool.workerpool_network
 }
 

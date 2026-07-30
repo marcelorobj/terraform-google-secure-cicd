@@ -19,8 +19,8 @@
 
 resource "google_cloudbuild_trigger" "deploy_trigger_unknown" {
   for_each = {
-    for env, config in var.deploy_branch_clusters : env => config
-    if config.next_env != "" && local.cd_repo_source.repo_type == "UNKNOWN"
+    for i, env_obj in local.ordered_deploy_branch_clusters : env_obj.name => env_obj
+    if env_obj.env_number < length(var.deploy_branch_clusters) && local.cd_repo_source.repo_type == "UNKNOWN"
   }
 
   project  = var.project_id
@@ -45,7 +45,6 @@ resource "google_cloudbuild_trigger" "deploy_trigger_unknown" {
       _CLUSTER_PROJECT           = each.value.project_id
       _CLOUDBUILD_FILENAME       = var.app_deploy_trigger_yaml
       _CACHE_BUCKET_NAME         = var.cache_bucket_name
-      _NEXT_ENV                  = each.value.next_env
       _ATTESTOR_NAME             = each.value.env_attestation
       _CLOUDBUILD_PRIVATE_POOL   = var.cloudbuild_private_pool
       _CLOUDDEPLOY_PIPELINE_NAME = var.clouddeploy_pipeline_name
@@ -64,8 +63,8 @@ resource "google_cloudbuild_trigger" "deploy_trigger_unknown" {
 
 resource "google_cloudbuild_trigger" "deploy_trigger_known" {
   for_each = {
-    for env, config in var.deploy_branch_clusters : env => config
-    if config.next_env != "" && local.cd_repo_source.repo_type != "UNKNOWN"
+    for i, env_obj in local.ordered_deploy_branch_clusters : env_obj.name => env_obj
+    if env_obj.env_number < length(var.deploy_branch_clusters) && local.cd_repo_source.repo_type != "UNKNOWN"
   }
 
   project  = var.project_id
@@ -91,7 +90,6 @@ resource "google_cloudbuild_trigger" "deploy_trigger_known" {
       _CLUSTER_PROJECT           = each.value.project_id
       _CLOUDBUILD_FILENAME       = var.app_deploy_trigger_yaml
       _CACHE_BUCKET_NAME         = var.cache_bucket_name
-      _NEXT_ENV                  = each.value.next_env
       _ATTESTOR_NAME             = each.value.env_attestation
       _CLOUDBUILD_PRIVATE_POOL   = var.cloudbuild_private_pool
       _CLOUDDEPLOY_PIPELINE_NAME = var.clouddeploy_pipeline_name

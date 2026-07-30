@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/gcloud"
 	"github.com/GoogleCloudPlatform/cloud-foundation-toolkit/infra/blueprint-test/pkg/git"
@@ -31,7 +32,6 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Helper function to check if a specific member has a specific role in an IAM policy JSON array
 func assertHasRole(assert *assert.Assertions, bindings []gjson.Result, role string, expectedMember string, resourceName string) {
 	found := false
 	for _, binding := range bindings {
@@ -56,6 +56,65 @@ func runCmd(t *testing.T, dir, name string, args ...string) {
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Command failed in %s: %s %v, error: %v", dir, name, args, err)
 	}
+}
+
+func getLatestReleaseName(t *testing.T, projectID, region, pipelineID, targetName string) string {
+	var latestRelease string
+	testutils.Retry(20, 30*time.Second, func() error {
+		releases := gcloud.Runf(t, "deploy releases list --delivery-pipeline=%s --project %s --region %s", pipelineID, projectID, region).Array()
+		for _, release := range releases {
+			fullReleaseName := release.Get("name").String()
+
+			// We still use the fullReleaseName for the rollouts list command
+			rollouts := gcloud.Runf(t, "deploy rollouts list --delivery-pipeline=%s --release=%s --project %s --region %s --filter='state=SUCCEEDED AND targetId=%s' --format=json", pipelineID, fullReleaseName, projectID, region, targetName).Array()
+
+			if len(rollouts) > 0 {
+				// Extract just the short release name (e.g., "release-0e3b979") from the full resource path
+				parts := strings.Split(fullReleaseName, "/")
+				latestRelease = parts[len(parts)-1]
+				return nil
+			}
+		}
+		return fmt.Errorf("no successful release found for target %s", targetName)
+	})
+	return latestRelease
+}
+
+func promoteRelease(t *testing.T, projectID, region, pipeline, release, toEnv string) {
+	testutils.Retry(20, 30*time.Second, func() error {
+		// Added --release= before %s
+		promoteCmd := gcloud.Runf(t, "deploy releases promote --release=%s --delivery-pipeline=%s --to-target=%s --project=%s --region=%s", release, pipeline, toEnv, projectID, region)
+
+		// Note: gcloud deploy releases promote returns a rollout object.
+		// Depending on your setup, it might be IN_PROGRESS initially.
+		state := promoteCmd.Get("state").String()
+		if state == "SUCCEEDED" || state == "IN_PROGRESS" || state == "PENDING" {
+			t.Logf("Release %s promotion to %s initiated/succeeded with state: %s", release, toEnv, state)
+			return nil
+		}
+		return fmt.Errorf("release promotion to %s failed with state: %s", toEnv, state)
+	})
+}
+
+func runTrigger(t *testing.T, projectID, region, triggerID string) {
+	testutils.Retry(10, 60*time.Second, func() error {
+		// Start the build and get the operation ID
+		buildOp := gcloud.Runf(t, "builds triggers run %s --project %s --region %s", triggerID, projectID, region)
+		buildID := buildOp.Get("metadata.build.id").String()
+		t.Logf("Started build %s for trigger %s", buildID, triggerID)
+
+		// Wait for the build to complete using polling
+		buildStatus := gcloud.Runf(t, "builds describe %s --project %s --region %s --format=json", buildID, projectID, region)
+		status := buildStatus.Get("status").String()
+
+		if status == "SUCCESS" {
+			t.Logf("Build %s for trigger %s succeeded.", buildID, triggerID)
+			return nil
+		} else if status == "FAILURE" || status == "CANCELLED" || status == "TIMEOUT" {
+			return fmt.Errorf("build %s for trigger %s failed with status: %s", buildID, triggerID, status)
+		}
+		return fmt.Errorf("build %s for trigger %s still running with status: %s", buildID, triggerID, status)
+	})
 }
 
 func setupGitOperations(t *testing.T, bpFolder, wsFolder, ciRepoName string, cdRepoName string) {
@@ -175,7 +234,12 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 		garRepoName := standaloneSingleProjT.GetStringOutput("gar_repo_name")
 		ciBuildTriggerID := standaloneSingleProjT.GetStringOutput("ci_build_trigger_id")
 		ciServiceAccount := standaloneSingleProjT.GetStringOutput("ci_service_account")
-		cloudDeployPipelineID := standaloneSingleProjT.GetStringOutput("clouddeploy_pipeline_id")
+		cdOrderedTriggerNamesList := standaloneSingleProjT.GetJsonOutput("cd_ordered_trigger_names").Array()
+		cloudDeployPipelineIDFull := standaloneSingleProjT.GetStringOutput("clouddeploy_pipeline_id")
+		pipelineParts := strings.Split(cloudDeployPipelineIDFull, "/")
+		cloudDeployPipelineID := pipelineParts[len(pipelineParts)-1]
+
+		clouddeployTargetNamesOrderedList := standaloneSingleProjT.GetJsonOutput("clouddeploy_target_names_ordered").Array()
 
 		standaloneSingleProjT.DefaultVerify(assert)
 
@@ -217,6 +281,19 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 			deployTargetOp := gcloud.Runf(t, "deploy targets describe %s --project %s --region %s", targetName, projectID, region)
 			assert.NotEmpty(deployTargetOp.Get("Target.name").String(), fmt.Sprintf("Cloud deploy target %s should exist", targetName))
 		}
+
+		var latestRelease string
+		for i, trigger := range cdOrderedTriggerNamesList {
+			triggerID := trigger.String()
+			targetName := clouddeployTargetNamesOrderedList[i].String()
+			t.Logf("Running trigger %s for target %s", triggerID, targetName)
+			runTrigger(t, projectID, region, triggerID)
+			latestRelease = getLatestReleaseName(t, projectID, region, cloudDeployPipelineID, targetName)
+			if i < len(cdOrderedTriggerNamesList)-1 {
+				promoteRelease(t, projectID, region, cloudDeployPipelineID, latestRelease, clouddeployTargetNamesOrderedList[i+1].String())
+			}
+		}
+
 	})
 
 	standaloneSingleProjT.DefineTeardown(func(assert *assert.Assertions) {

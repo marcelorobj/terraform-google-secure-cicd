@@ -42,16 +42,17 @@ variable "app_deploy_trigger_yaml" {
 
 variable "deploy_branch_clusters" {
   type = map(object({
+    name                  = string
     cluster               = string
     anthos_membership     = string
     project_id            = string
     location              = string
     required_attestations = list(string)
     env_attestation       = string
-    next_env              = string
+    env_number            = number
     target_type           = string
   }))
-  description = "mapping of branch names to cluster deployments. target_type can be one of `gke`, `anthos_cluster`, or `run`. See [clouddeploy_target Terraform docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/clouddeploy_target) for more details"
+  description = "A list of environment deployments, ordered by 'env_number'. target_type can be one of `gke`, `anthos_cluster`, or `run`. See [clouddeploy_target Terraform docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/clouddeploy_target) for more details"
   default     = {}
 }
 

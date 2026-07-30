@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,13 +44,18 @@ output "ci_build_trigger_id" {
   value       = module.ci_pipeline.ci_build_trigger_id
 }
 
-output "cd_build_trigger_ids" {
-  description = "Map of CD Cloud Build trigger names by environment"
+output "cd_ordered_trigger_names" {
+  description = "Names of CD Cloud Build triggers in promotion order"
   value       = module.cd_pipeline.deploy_trigger_names
 }
 
+output "clouddeploy_target_names_ordered" {
+  description = "Names of Cloud Deploy targets in promotion order"
+  value       = module.cd_pipeline.clouddeploy_target_names_ordered
+}
+
 output "gar_repo_name" {
-  description = "Name of the Artifact Registry repository"
+  description = "Name of the Google Artifact Registry repository"
   value       = module.ci_pipeline.app_artifact_repo
 }
 

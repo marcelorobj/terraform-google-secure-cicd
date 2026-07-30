@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,10 +141,4 @@ resource "google_kms_crypto_key_iam_member" "standalone_gcs_sa_kms" {
   crypto_key_id = google_kms_crypto_key.standalone_bucket_key.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${data.google_storage_project_service_account.standalone_gcs_account.email_address}"
-}
-
-resource "google_organization_iam_member" "int_test_access_context_manager_admin" {
-  org_id = var.org_id
-  role   = "roles/accesscontextmanager.policyAdmin"
-  member = "serviceAccount:${google_service_account.int_test.email}"
 }

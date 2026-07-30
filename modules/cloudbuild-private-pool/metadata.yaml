@@ -85,10 +85,16 @@ spec:
         varType: map(string)
         defaultValue: {}
     outputs:
+      - name: peering_name
+        description: The name of the VPC network peering connection
       - name: workerpool_id
         description: Cloud Build worker pool ID
       - name: workerpool_network
         description: Self Link for Cloud Build workerpool VPC network
+      - name: workerpool_network_id
+        description: ID of the VPC network where the worker pool is peered
+      - name: workerpool_network_name
+        description: Name of the VPC network where the worker pool is peered
       - name: workerpool_range
         description: IP Address range for Cloud Build worker pool
   requirements:

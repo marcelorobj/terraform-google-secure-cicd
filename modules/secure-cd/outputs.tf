@@ -17,11 +17,11 @@
 output "deploy_trigger_names" {
   description = "Names of CD Cloud Build triggers"
   value = [
-    for env, config in var.deploy_branch_clusters : try(
-      google_cloudbuild_trigger.deploy_trigger_unknown[env].name,
-      google_cloudbuild_trigger.deploy_trigger_known[env].name
+    for env_obj in local.ordered_deploy_branch_clusters : try(
+      google_cloudbuild_trigger.deploy_trigger_unknown[env_obj.name].name,
+      google_cloudbuild_trigger.deploy_trigger_known[env_obj.name].name
     )
-    if config.next_env != ""
+    if env_obj.env_number < length(var.deploy_branch_clusters)
   ]
 }
 
@@ -38,6 +38,11 @@ output "clouddeploy_delivery_pipeline_id" {
 output "clouddeploy_target_id" {
   description = "ID(s) of Cloud Deploy targets"
   value       = [for target in google_clouddeploy_target.deploy_target : target.id]
+}
+
+output "clouddeploy_target_names_ordered" {
+  description = "Names of Cloud Deploy targets in promotion order"
+  value       = [for env_obj in local.ordered_deploy_branch_clusters : google_clouddeploy_target.deploy_target[env_obj.name].name]
 }
 
 output "cd_repo_name" {

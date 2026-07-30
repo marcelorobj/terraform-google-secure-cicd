@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,21 +79,17 @@ module "gke_cluster" {
     }
   ]
 
-  # --- START OF THE CORRECT FIX ---
   node_pools = [
     {
       name         = "default-node-pool"
-      machine_type = "e2-medium" # This was the missing required parameter
-      disk_size_gb = 100         # It's good practice to define disk size
+      machine_type = "e2-medium"
+      disk_size_gb = 100
 
-      # Your existing autoscaling settings are correct for a regional cluster
       location_policy      = "BALANCED"
       total_max_node_count = 2
-      # For clarity and robustness, also define the minimum
       total_min_node_count = 1
     }
   ]
-  # --- END OF THE CORRECT FIX ---
 
   node_pools_labels = {
     all = var.labels

@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -235,82 +235,6 @@ locals {
 
   egress_rules = [
     {
-      title = "Egress to service networking project"
-      from = {
-        identity_type = "ANY_IDENTITY"
-        sources = {
-          resources = ["projects/${data.google_project.project.number}"]
-        }
-      },
-      to = {
-        resources = ["projects/213331819513"], //service networking project
-        operations = {
-          "compute.googleapis.com" = { methods = ["*"] }
-        }
-      }
-    },
-    {
-      title = "Egress to bank of anthos by AR, CA and BAuthz"
-      from = {
-        identity_type = "ANY_IDENTITY"
-        sources = {
-          resources = ["projects/${data.google_project.project.number}"]
-        }
-      }
-      to = {
-        resources = [
-          "projects/682719828243" // projects/bank-of-anthos-ci/locations/us-central1/repositories/bank-of-anthos
-        ]
-        operations = {
-          "artifactregistry.googleapis.com"    = { methods = ["*"] }
-          "binaryauthorization.googleapis.com" = { methods = ["*"] }
-          "cloudkms.googleapis.com"            = { methods = ["*"] }
-          "container.googleapis.com"           = { methods = ["*"] }
-          "containerfilesystem.googleapis.com" = { methods = ["*"] }
-          "containeranalysis.googleapis.com"   = { methods = ["*"] }
-          "containerregistry.googleapis.com"   = { methods = ["*"] }
-          "storage.googleapis.com"             = { methods = ["*"] }
-          "iamcredentials.googleapis.com"      = { methods = ["*"] }
-          "compute.googleapis.com"             = { methods = ["*"] }
-          "containerfilesystem.googleapis.com" = { methods = ["*"] }
-        }
-      }
-    },
-    {
-      title = "Egress to Proxy Golang Storage project"
-      from = {
-        identity_type = "ANY_IDENTITY"
-        sources = {
-          resources = ["projects/${data.google_project.project.number}"]
-        }
-      }
-      to = {
-        resources = [
-          "projects/912338787515", //proxy-golang-org-prod
-        ]
-        operations = {
-          "storage.googleapis.com" = { methods = ["*"] }
-        }
-      }
-    },
-    {
-      title = "Egress to Storage project"
-      from = {
-        identity_type = "ANY_IDENTITY"
-        sources = {
-          resources = ["projects/${data.google_project.project.number}"]
-        }
-      }
-      to = {
-        resources = [
-          "projects/213358688945",
-        ]
-        operations = {
-          "storage.googleapis.com" = { methods = ["*"] }
-        }
-      }
-    },
-    {
       title = "Egress to Logging bucket project"
       from = {
         identity_type = "ANY_IDENTITY"
@@ -324,30 +248,6 @@ locals {
         ]
         operations = {
           "storage.googleapis.com" = { methods = ["*"] }
-        }
-      }
-    },
-    {
-      title = "Egress from ANY_IDENTITY to artifact-registry-docker-cache"
-      from = {
-        identity_type = "ANY_IDENTITY" //https://cloud.google.com/artifact-registry/docs/securing-with-vpc-sc
-        sources = {
-          resources = ["projects/${data.google_project.project.number}"]
-        }
-      },
-      to = {
-        resources = ["projects/342927644502"], //artifact-registry-docker-cache
-        operations = {
-          "artifactregistry.googleapis.com"    = { methods = ["*"] }
-          "binaryauthorization.googleapis.com" = { methods = ["*"] }
-          "cloudkms.googleapis.com"            = { methods = ["*"] }
-          "container.googleapis.com"           = { methods = ["*"] }
-          "containeranalysis.googleapis.com"   = { methods = ["*"] }
-          "containerfilesystem.googleapis.com" = { methods = ["*"] }
-          "containerregistry.googleapis.com"   = { methods = ["*"] }
-          "storage.googleapis.com"             = { methods = ["*"] }
-          "iamcredentials.googleapis.com"      = { methods = ["*"] }
-          "compute.googleapis.com"             = { methods = ["*"] }
         }
       }
     },

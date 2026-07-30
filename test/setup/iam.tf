@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ locals {
     "roles/binaryauthorization.attestorsAdmin",
     "roles/cloudbuild.builds.builder",
     "roles/cloudbuild.workerPoolOwner",
+    "roles/cloudbuild.workerPoolUser",
     "roles/cloudbuild.admin",
     "roles/clouddeploy.admin",
     "roles/cloudkms.admin",
@@ -38,6 +39,7 @@ locals {
     "roles/resourcemanager.projectIamAdmin",
     "roles/viewer",
     "roles/secretmanager.admin",
+    "roles/secretmanager.secretAccessor",
     "roles/servicedirectory.admin",
     "roles/dns.admin",
     "roles/logging.logWriter"
@@ -64,48 +66,22 @@ resource "google_service_account_key" "int_test" {
 }
 
 resource "google_project_iam_member" "int_test_singleproj" {
-  for_each = toset(local.int_required_roles)
+  for_each = toset(concat(local.int_required_roles, local.gke_int_required_roles))
 
   project = module.project_standalone.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.int_test.email}"
 }
 
-resource "google_project_iam_member" "gke_int_test_singleproj" {
-  for_each = toset(local.gke_int_required_roles)
-
-  project = module.project_standalone.project_id
-  role    = each.value
-  member  = "serviceAccount:${google_service_account.int_test.email}"
-}
-
-resource "google_organization_iam_member" "org_iam_member" {
-  role   = "roles/resourcemanager.organizationAdmin"
-  member = "serviceAccount:${google_service_account.int_test.email}"
+resource "google_organization_iam_member" "org_iam_roles" {
+  for_each = toset([
+    "roles/resourcemanager.organizationAdmin",
+    "roles/compute.xpnAdmin",
+    "roles/orgpolicy.policyAdmin",
+    "roles/accesscontextmanager.policyAdmin"
+  ])
   org_id = var.org_id
-}
-
-resource "google_organization_iam_member" "organizationServiceAgent_role" {
-  org_id = var.org_id
-  role   = "roles/resourcemanager.organizationAdmin"
-  member = "serviceAccount:${google_service_account.int_test.email}"
-}
-
-resource "google_organization_iam_member" "organization_xpn_role" {
-  org_id = var.org_id
-  role   = "roles/compute.xpnAdmin"
-  member = "serviceAccount:${google_service_account.int_test.email}"
-}
-
-resource "google_organization_iam_member" "orgPolicyAdmin_role" {
-  org_id = var.org_id
-  role   = "roles/orgpolicy.policyAdmin"
-  member = "serviceAccount:${google_service_account.int_test.email}"
-}
-
-resource "google_organization_iam_member" "policyAdmin_role" {
-  org_id = var.org_id
-  role   = "roles/accesscontextmanager.policyAdmin"
+  role   = each.value
   member = "serviceAccount:${google_service_account.int_test.email}"
 }
 

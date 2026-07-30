@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 locals {
   deploy_branch_clusters = {
     "01-${var.env1_name}" = {
+      name                  = var.env1_name,
       cluster               = module.gke_cluster[var.env1_name].name,
       anthos_membership     = module.fleet_membership[var.env1_name].cluster_membership_id
       target_type           = "anthos_cluster"
@@ -25,9 +26,10 @@ locals {
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["build"]]
       env_attestation       = module.attestors.binauth_attestor_ids["security"]
-      next_env              = "02-qa"
+      env_number            = 1
     },
     "02-${var.env2_name}" = {
+      name                  = var.env2_name,
       cluster               = module.gke_cluster[var.env2_name].name,
       anthos_membership     = module.fleet_membership[var.env2_name].cluster_membership_id
       target_type           = "anthos_cluster"
@@ -36,9 +38,10 @@ locals {
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
       env_attestation       = module.attestors.binauth_attestor_ids["quality"]
-      next_env              = "03-prod"
+      env_number            = 2
     },
     "03-${var.env3_name}" = {
+      name                  = var.env3_name,
       cluster               = module.gke_cluster[var.env3_name].name,
       anthos_membership     = module.fleet_membership[var.env3_name].cluster_membership_id
       target_type           = "anthos_cluster"
@@ -47,7 +50,7 @@ locals {
       location              = var.region
       required_attestations = [module.attestors.binauth_attestor_ids["quality"], module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
       env_attestation       = ""
-      next_env              = ""
+      env_number            = 3
     },
   }
 
@@ -55,8 +58,7 @@ locals {
 }
 
 module "ci_pipeline" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-ci"
-  version = "~> 1.0"
+  source = "../../modules/secure-ci"
 
   project_id                = var.project_id
   repository_type           = var.repository_type
@@ -76,12 +78,10 @@ module "ci_pipeline" {
 }
 
 module "cd_pipeline" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/secure-cd"
-  version = "~> 1.0"
+  source = "../../modules/secure-cd"
 
-  project_id       = var.project_id
-  primary_location = var.region
-
+  project_id                 = var.project_id
+  primary_location           = var.region
   repository_type            = var.repository_type
   github_auth                = var.repository_type == "GITHUB" ? var.github_auth : null
   gitlab_auth                = var.repository_type == "GITLAB" ? var.gitlab_auth : null
@@ -99,35 +99,28 @@ module "cd_pipeline" {
   ]
 }
 
-
 module "cloudbuild_private_pool" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/cloudbuild-private-pool"
-  version = "~> 1.0"
+  source = "../../modules/cloudbuild-private-pool"
 
   count = var.private_worker_pool_id == null ? 1 : 0
 
-  project_id                = var.project_id
-  network_project_id        = var.project_id
-  location                  = var.region
-  create_cloudbuild_network = true
-  private_pool_vpc_name     = "cloudbuild-worker-vpc"
-  worker_pool_name          = "cloudbuild-workerpool"
-  machine_type              = var.cloudbuild_private_pool_machine_type
-
+  project_id                   = var.project_id
+  network_project_id           = var.project_id
+  location                     = var.region
+  create_cloudbuild_network    = true
+  private_pool_vpc_name        = "cloudbuild-worker-vpc"
+  worker_pool_name             = "cloudbuild-workerpool"
+  machine_type                 = var.cloudbuild_private_pool_machine_type
   worker_address               = "10.39.0.0"
   worker_address_prefix_length = "24"
   worker_range_name            = "cloudbuild-worker-range"
-
-  labels = var.labels
+  labels                       = var.labels
 }
 
 module "attestors" {
-  source  = "GoogleCloudPlatform/secure-cicd/google//modules/attestor"
-  version = "~> 1.0"
+  source = "../../modules/attestor"
 
-  project_id = var.project_id
-
-  primary_location = var.region
-
+  project_id            = var.project_id
+  primary_location      = var.region
   attestor_names_prefix = ["build", "security", "quality"]
 }

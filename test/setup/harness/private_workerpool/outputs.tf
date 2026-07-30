@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,8 +36,4 @@ output "workerpool_id" {
 
 output "workerpool_network_self_link" {
   value = module.private_workerpool.workerpool_network_self_link
-}
-
-output "workerpool_subnets_self_links" {
-  value = module.private_workerpool.workerpool_subnets_self_links
 }

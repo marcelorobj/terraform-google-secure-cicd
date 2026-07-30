@@ -143,7 +143,7 @@ module "cd_pipeline" {
 | cloudbuild\_service\_account | Cloud Build SA email address | `string` | n/a | yes |
 | clouddeploy\_pipeline\_name | Cloud Deploy pipeline name | `string` | n/a | yes |
 | csr\_cloudbuild\_cd\_repo | Name of the CSR repo that stores the Cloud Build CD phase configs - for post-deployment checks | `string` | `null` | no |
-| deploy\_branch\_clusters | mapping of branch names to cluster deployments. target\_type can be one of `gke`, `anthos_cluster`, or `run`. See [clouddeploy\_target Terraform docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/clouddeploy_target) for more details | <pre>map(object({<br>    cluster               = string<br>    anthos_membership     = string<br>    project_id            = string<br>    location              = string<br>    required_attestations = list(string)<br>    env_attestation       = string<br>    next_env              = string<br>    target_type           = string<br>  }))</pre> | `{}` | no |
+| deploy\_branch\_clusters | A list of environment deployments, ordered by 'env\_number'. target\_type can be one of `gke`, `anthos_cluster`, or `run`. See [clouddeploy\_target Terraform docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/clouddeploy_target) for more details | <pre>map(object({<br>    name                  = string<br>    cluster               = string<br>    anthos_membership     = string<br>    project_id            = string<br>    location              = string<br>    required_attestations = list(string)<br>    env_attestation       = string<br>    env_number            = number<br>    target_type           = string<br>  }))</pre> | `{}` | no |
 | gar\_repo\_name | Docker artifact registry repo to store app build images | `string` | n/a | yes |
 | github\_auth | Authentication configuration for GitHub. Required only if repo\_type is 'GITHUBv2'. | <pre>object({<br>    secret_id         = string<br>    app_id_secret_id  = string<br>    secret_project_id = string<br>  })</pre> | `null` | no |
 | gitlab\_auth | Authentication configuration for GitLab. Required only if repo\_type is 'GITLABv2'. | <pre>object({<br>    read_authorizer_credential_secret_id = string<br>    authorizer_credential_secret_id      = string<br>    webhook_secret_id                    = string<br>    enterprise_host_uri                  = optional(string)<br>    enterprise_service_directory         = optional(string)<br>    enterprise_ca_certificate            = optional(string)<br>    secret_project_id                    = string<br>  })</pre> | `null` | no |
@@ -159,6 +159,7 @@ module "cd_pipeline" {
 | cd\_repo\_name | Name of the CD source repository |
 | clouddeploy\_delivery\_pipeline\_id | ID of the Cloud Deploy delivery pipeline |
 | clouddeploy\_target\_id | ID(s) of Cloud Deploy targets |
+| clouddeploy\_target\_names\_ordered | Names of Cloud Deploy targets in promotion order |
 | deploy\_trigger\_names | Names of CD Cloud Build triggers |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
