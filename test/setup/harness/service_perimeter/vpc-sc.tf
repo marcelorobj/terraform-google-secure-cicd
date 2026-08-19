@@ -21,6 +21,7 @@ locals {
   access_level_members = concat(
     var.access_level_members,
     [
+      "serviceAccount:${google_project_service_identity.container_service_agent.email}",
       "serviceAccount:${google_project_service_identity.cloudbuild_service_agent.email}",
       "serviceAccount:${google_project_service_identity.clouddeploy_service_agent.email}",
     ]
@@ -309,6 +310,11 @@ resource "google_project_service_identity" "cloudbuild_service_agent" {
   service  = "cloudbuild.googleapis.com"
 }
 
+resource "google_project_service_identity" "container_service_agent" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "container.googleapis.com"
+}
 
 resource "google_project_service_identity" "clouddeploy_service_agent" {
   provider = google-beta
@@ -343,7 +349,14 @@ module "access_level_members" {
   name               = local.access_level_name
   members            = local.access_level_members
   combining_function = "OR"
-  depends_on         = [time_sleep.destroy_wait_propagation]
+
+  depends_on = [
+    google_project_service_identity.cloudbuild_service_agent,
+    google_project_service_identity.clouddeploy_service_agent,
+    google_project_service_identity.cloudkms_service_account,
+    google_project_service_identity.container_service_agent,
+    time_sleep.destroy_wait_propagation
+  ]
 }
 
 module "regular_service_perimeter" {

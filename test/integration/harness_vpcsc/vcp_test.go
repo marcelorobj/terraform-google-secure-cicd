@@ -48,7 +48,6 @@ func TestVPCSC(t *testing.T) {
 		fmt.Sprintf("serviceAccount:%s@cloudbuild.gserviceaccount.com", projectNumber),
 		fmt.Sprintf("serviceAccount:%s-compute@developer.gserviceaccount.com", projectNumber),
 		fmt.Sprintf("serviceAccount:%s@cloudservices.gserviceaccount.com", projectNumber),
-		fmt.Sprintf("serviceAccount:service-%s@container-engine-robot.iam.gserviceaccount.com", projectNumber),
 		fmt.Sprintf("serviceAccount:service-%s@compute-system.iam.gserviceaccount.com", projectNumber),
 		fmt.Sprintf("serviceAccount:service-%s@gcp-sa-artifactregistry.iam.gserviceaccount.com", projectNumber),
 	}
