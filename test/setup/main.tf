@@ -120,11 +120,18 @@ resource "random_string" "kms_suffix" {
   upper   = false
 }
 
+resource "google_project_service_identity" "gcs_sa" {
+  provider   = google-beta
+  project    = module.project_standalone.project_id
+  service    = "storage.googleapis.com"
+  depends_on = [module.project_standalone]
+}
+
 resource "google_kms_key_ring" "standalone_keyring" {
   name       = "standalone-keyring-${random_string.kms_suffix.result}"
   location   = local.primary_location
   project    = module.project_standalone.project_id
-  depends_on = [module.project_standalone]
+  depends_on = [google_project_service_identity.gcs_sa]
 }
 
 resource "google_kms_crypto_key" "standalone_bucket_key" {
@@ -133,12 +140,9 @@ resource "google_kms_crypto_key" "standalone_bucket_key" {
   rotation_period = "7776000s"
 }
 
-data "google_storage_project_service_account" "standalone_gcs_account" {
-  project = module.project_standalone.project_id
-}
-
 resource "google_kms_crypto_key_iam_member" "standalone_gcs_sa_kms" {
   crypto_key_id = google_kms_crypto_key.standalone_bucket_key.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:${data.google_storage_project_service_account.standalone_gcs_account.email_address}"
+  member        = "serviceAccount:service-${module.project_standalone.project_number}@gs-project-accounts.iam.gserviceaccount.com"
+  depends_on    = [google_project_service_identity.gcs_sa]
 }
