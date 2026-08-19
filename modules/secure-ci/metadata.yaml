@@ -41,7 +41,7 @@ spec:
         varType: string
         required: true
       - name: primary_location
-        description: Region used for key-ring
+        description: Primary Google Cloud region for deploying resources like Artifact Registry, Cloud Storage buckets, and Cloud Build triggers.
         varType: string
         required: true
       - name: attestor_names_prefix
@@ -78,11 +78,13 @@ spec:
           - roles/artifactregistry.admin
           - roles/binaryauthorization.attestorsVerifier
           - roles/cloudbuild.builds.builder
+          - roles/cloudbuild.connectionViewer
           - roles/clouddeploy.developer
           - roles/clouddeploy.releaser
           - roles/cloudkms.cryptoOperator
           - roles/containeranalysis.notes.attacher
           - roles/containeranalysis.notes.occurrences.viewer
+          - roles/serviceusage.serviceUsageConsumer
           - roles/source.writer
           - roles/storage.admin
           - roles/cloudbuild.workerPoolUser

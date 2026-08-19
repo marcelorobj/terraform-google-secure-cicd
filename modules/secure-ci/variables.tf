@@ -21,7 +21,7 @@ variable "project_id" {
 
 variable "primary_location" {
   type        = string
-  description = "Region used for key-ring"
+  description = "Primary Google Cloud region for deploying resources like Artifact Registry, Cloud Storage buckets, and Cloud Build triggers."
 }
 
 variable "attestor_names_prefix" {
@@ -70,11 +70,13 @@ variable "cloudbuild_service_account_roles" {
     "roles/artifactregistry.admin",
     "roles/binaryauthorization.attestorsVerifier",
     "roles/cloudbuild.builds.builder",
+    "roles/cloudbuild.connectionViewer",
     "roles/clouddeploy.developer",
     "roles/clouddeploy.releaser",
     "roles/cloudkms.cryptoOperator",
     "roles/containeranalysis.notes.attacher",
     "roles/containeranalysis.notes.occurrences.viewer",
+    "roles/serviceusage.serviceUsageConsumer",
     "roles/source.writer",
     "roles/storage.admin",
     "roles/cloudbuild.workerPoolUser",

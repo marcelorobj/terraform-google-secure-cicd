@@ -21,7 +21,7 @@ variable "project_id" {
 
 variable "primary_location" {
   type        = string
-  description = "Region used for key-ring"
+  description = "Primary Google Cloud region for deploying resources like Cloud Build triggers and Cloud Deploy pipelines."
 }
 
 variable "csr_cloudbuild_cd_repo" {
