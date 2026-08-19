@@ -85,7 +85,10 @@ resource "google_cloudbuild_trigger" "csr_app_build_trigger" {
   substitutions   = local.common_substitutions
   service_account = google_service_account.build_sa.id
   filename        = var.app_build_trigger_yaml
-  depends_on      = [google_sourcerepo_repository.csr_ci_repository]
+  depends_on = [
+    google_sourcerepo_repository.csr_ci_repository,
+    time_sleep.wait_for_cb_iam
+  ]
 }
 
 resource "google_cloudbuild_trigger" "app_build_trigger" {
@@ -103,7 +106,10 @@ resource "google_cloudbuild_trigger" "app_build_trigger" {
   substitutions   = local.common_substitutions
   service_account = google_service_account.build_sa.id
   filename        = var.app_build_trigger_yaml
-  depends_on      = [module.cloudbuild_repositories]
+  depends_on = [
+    module.cloudbuild_repositories,
+    time_sleep.wait_for_cb_iam
+  ]
 }
 
 resource "google_artifact_registry_repository" "image_repo" {

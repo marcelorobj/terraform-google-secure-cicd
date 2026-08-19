@@ -81,6 +81,18 @@ resource "google_project_iam_member" "build_sa_project_iam" {
   member   = "serviceAccount:${google_service_account.build_sa.email}"
 }
 
+resource "google_project_iam_member" "cloudbuild_sa_connection_viewer" {
+  project = var.project_id
+  role    = "roles/cloudbuild.connectionViewer"
+
+  member = "serviceAccount:${google_project_service_identity.cloudbuild_service_identity.email}"
+}
+
+resource "time_sleep" "wait_for_cb_iam" {
+  depends_on      = [google_project_iam_member.cloudbuild_sa_connection_viewer]
+  create_duration = "30s"
+}
+
 resource "time_sleep" "wait_access_level_propagation" {
   depends_on = [
     google_project_service_identity.cloudbuild_service_identity,
