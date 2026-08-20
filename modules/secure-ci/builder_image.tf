@@ -45,5 +45,7 @@ resource "null_resource" "build_skaffold_builder_image" {
     google_artifact_registry_repository.image_repo,
     google_service_account.build_sa,
     google_storage_bucket.cache_bucket,
+    google_project_iam_member.build_sa_project_iam,
+    time_sleep.wait_for_cb_iam
   ]
 }
