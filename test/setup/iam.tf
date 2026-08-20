@@ -78,7 +78,8 @@ resource "google_organization_iam_member" "org_iam_roles" {
     "roles/resourcemanager.organizationAdmin",
     "roles/compute.xpnAdmin",
     "roles/orgpolicy.policyAdmin",
-    "roles/accesscontextmanager.policyAdmin"
+    "roles/accesscontextmanager.policyAdmin",
+    "roles/serviceusage.serviceUsageConsumer"
   ])
   org_id = var.org_id
   role   = each.value
