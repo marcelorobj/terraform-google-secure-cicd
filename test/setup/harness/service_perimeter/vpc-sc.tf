@@ -24,6 +24,7 @@ locals {
       "serviceAccount:${google_project_service_identity.container_service_agent.email}",
       "serviceAccount:${google_project_service_identity.cloudbuild_service_agent.email}",
       "serviceAccount:${google_project_service_identity.clouddeploy_service_agent.email}",
+      "serviceAccount:${google_project_service_identity.artifact_registry_agent.email}",
     ]
   )
   supported_restricted_service = [
@@ -322,6 +323,12 @@ resource "google_project_service_identity" "clouddeploy_service_agent" {
   service  = "clouddeploy.googleapis.com"
 }
 
+resource "google_project_service_identity" "artifact_registry_agent" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "artifactregistry.googleapis.com"
+}
+
 resource "random_string" "random_access_level_suffix" {
   length  = 4
   lower   = true
@@ -355,6 +362,7 @@ module "access_level_members" {
     google_project_service_identity.clouddeploy_service_agent,
     google_project_service_identity.cloudkms_service_account,
     google_project_service_identity.container_service_agent,
+    google_project_service_identity.artifact_registry_agent,
     time_sleep.destroy_wait_propagation
   ]
 }
