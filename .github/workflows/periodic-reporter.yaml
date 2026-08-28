@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ jobs:
     runs-on: 'ubuntu-latest'
 
     steps:
-      - uses: 'actions/github-script@v8'
+      - uses: 'actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd'
         with:
           script: |-
                   // label for all issues opened by reporter
