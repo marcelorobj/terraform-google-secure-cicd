@@ -24,16 +24,16 @@ CAP-5: Context-aware status reporting. Success: interrupts loop to report curren
 
 ### NonFunctional Requirements
 
-NFR-1: If the agent's execution is halted midway, running the agent again must safely resume the process. It must verify the current state (e.g., detecting if terraform state exists, checking if repos already have code) before re-executing steps to avoid errors or duplicated data.
+NFR-1: If the skill's execution is halted midway, running the skill again must safely resume the process. It must verify the current state (e.g., detecting if terraform state exists, checking if repos already have code) before re-executing steps to avoid errors or duplicated data.
 
 ### Additional Requirements
 
 - The skill operates as a Checkpoint Pipeline (sequential pipeline of discrete stages) and executes a read-only `check_state` function before executing any stage to natively satisfy idempotency.
 - The skill MUST NOT use a local state file (AD-1) and MUST query the actual environment for the successful end-state.
-- The skill MUST use Python's `subprocess.run` to execute external tools directly (AD-2) and MUST use non-interactive automation flags (e.g., `terraform apply -auto-approve`) for any command that natively prompts for user input.
-- If a subprocess returns a non-zero exit code, the skill MUST pass both `stdout` and `stderr` to an LLM context to generate a diagnosis and remediation step, present it, and prompt for interactive retry (AD-3).
+- The skill MUST use Antigravity CLI's `run_command` tool to execute external cli commands directly (AD-2) and MUST use non-interactive automation flags (e.g., `terraform apply -auto-approve`) for any command that natively prompts for user input.
+- If a tool returns a non-zero exit code, the skill MUST pass both `stdout` and `stderr` to an LLM context to generate a diagnosis and remediation step, present it, and prompt for interactive retry (AD-3).
 - Interactive shell commands (like `gcloud auth login`) MUST NOT capture output so the user can interact with the browser/terminal prompts.
-- Subprocess Execution convention: Use `capture_output=True, text=True` to ensure both stdout and stderr can be passed to the LLM upon failure.
+- Tool Execution convention: Use `capture_output=True, text=True` to ensure both stdout and stderr can be passed to the LLM upon failure.
 - User Prompts convention: Use standard Antigravity CLI prompt utilities for yes/no and text input gathering.
 - Stack requirements: Python >= 3.10, Terraform <= 1.5.7, Git, envsubst, Google Cloud SDK.
 
@@ -75,37 +75,37 @@ So that the deployment is safely resumable and I get intelligent help if a comma
 
 **Acceptance Criteria:**
 
-**Given** the agent is executed from the terminal
+**Given** the skill is executed from the terminal
 **When** the pipeline starts
 **Then** it must sequentially invoke registered stages
 **And** it must execute a `check_state` function before each stage to skip completed work
 
-**Given** a stage executes a shell command via `subprocess.run`
+**Given** a stage executes a shell command via `run_command` tool
 **When** the command returns a non-zero exit code
-**Then** the agent must capture both `stdout` and `stderr`
+**Then** the skill must capture both `stdout` and `stderr`
 **And** pass the output to the LLM to generate a diagnosis
 **And** prompt the user to interactively retry the stage (y/n)
 
 ### Story 1.2: Interactive Prerequisites & gcloud Authentication Check
 
 As a platform engineer,
-I want the agent to verify my GCP prerequisites and authenticate my gcloud CLI,
+I want the skill to verify my GCP prerequisites and authenticate my gcloud CLI,
 So that I don't fail later in the deployment due to missing permissions or configurations.
 
 **Acceptance Criteria:**
 
 **Given** the prerequisites stage begins
-**When** the agent checks `gcloud` authentication status
+**When** the skill checks `gcloud` authentication status
 **Then** it must prompt the user if authentication is missing or misconfigured
 **And** execute `gcloud auth login`, `config set project`, and `auth application-default login` interactively if the user agrees
 
 **Given** the user is missing a Public Domain
 **When** prompted
-**Then** the agent must output the exact Cloud Domains registration instructions
+**Then** the skill must output the exact Cloud Domains registration instructions
 
 **Given** the organization policies are checked
 **When** `constraints/gcp.restrictNonCmekServices` is enforced
-**Then** the agent must gracefully halt with an explanation
+**Then** the skill must gracefully halt with an explanation
 **And** gracefully handle `PERMISSION_DENIED` errors without crashing if the user lacks `policyViewer` roles
 
 ### Story 1.3: Interactive tfvars Configuration Gathering
@@ -122,7 +122,7 @@ So that my `terraform.tfvars` is generated without formatting errors.
 
 **Given** the user provides the 6 GitHub repository URLs
 **When** the input is submitted
-**Then** the agent must validate that all 6 URLs are unique and correctly formatted before proceeding
+**Then** the skill must validate that all 6 URLs are unique and correctly formatted before proceeding
 **And** write the final variables to `terraform.tfvars`
 
 ### Story 2.1: Terraform Plan & Interactive Approval Gate
@@ -135,83 +135,83 @@ So that I don't accidentally provision incorrect or destructive changes to my GC
 
 **Given** the configuration stage has completed successfully
 **When** the terraform stage begins
-**Then** the agent must execute `terraform init` and `terraform plan`
+**Then** the skill must execute `terraform init` and `terraform plan`
 
 **Given** the `terraform plan` completes successfully
 **When** presenting the results to the user
-**Then** the agent must write the full plan output to a file artifact
+**Then** the skill must write the full plan output to a file artifact
 **And** notify the user of the file's location
 **And** pause execution to prompt for an explicit "yes/no" approval before proceeding
 
 **Given** the user is prompted for approval
 **When** the user inputs "no" or rejects the plan
-**Then** the agent must gracefully halt execution without throwing a fatal error
+**Then** the skill must gracefully halt execution without throwing a fatal error
 **And** leave the environment unchanged
 
 ### Story 2.2: Terraform Apply & Output Extraction
 
 As a platform engineer,
-I want the agent to automatically apply the approved infrastructure and pass the outputs to the next stage,
+I want the skill to automatically apply the approved infrastructure and pass the outputs to the next stage,
 So that the CI/CD pipeline seeding has the correct dynamic values to template the manifests.
 
 **Acceptance Criteria:**
 
 **Given** the user explicitly approves the terraform plan
 **When** executing the apply
-**Then** the agent must run `terraform apply -auto-approve` (using non-interactive flags per architecture)
+**Then** the skill must run `terraform apply -auto-approve` (using non-interactive flags per architecture)
 
 **Given** the terraform apply completes successfully
 **When** finalizing the terraform stage
-**Then** the agent must extract the outputs (e.g., via `terraform output -json`)
+**Then** the skill must extract the outputs (e.g., via `terraform output -json`)
 **And** return/persist these values so downstream pipeline stages can consume them
 
 ### Story 3.1: CI Repository Seeding & Manifest Templating
 
 As a platform engineer,
-I want the agent to automatically template my manifests and push the correct files to my CI repositories,
+I want the skill to automatically template my manifests and push the correct files to my CI repositories,
 So that I don't have to manually copy files across directories and run git commands for multiple services.
 
 **Acceptance Criteria:**
 
 **Given** the terraform stage completes and provides outputs
 **When** the repository seeding stage runs for a service (e.g., `legacy-dms`)
-**Then** the agent must template the Cloud Run and Skaffold manifests using `envsubst` populated with the terraform outputs
+**Then** the skill must template the Cloud Run and Skaffold manifests using `envsubst` populated with the terraform outputs
 
 **Given** the staging directory is prepared for a service
 **When** assembling the files to commit
-**Then** the agent must copy the service's source code (`src/<service>`), the templated `cloud_run/<service>.yaml`, and the `skaffold.yaml`
+**Then** the skill must copy the service's source code (`src/<service>`), the templated `cloud_run/<service>.yaml`, and the `skaffold.yaml`
 **And** it must explicitly copy `cloudbuild-ci.yaml` and the `policies/` directory from the repository's root `/build` directory into the staging folder
 
 **Given** the staging folder is fully assembled
 **When** executing the git push
-**Then** the agent must explicitly check out or create the `main` branch to avoid pushing to `master`
+**Then** the skill must explicitly check out or create the `main` branch to avoid pushing to `master`
 **And** push the commit to the correct CI repository URL gathered in the configuration stage
 **And** it MUST NOT use the `--force` or `-f` flag during push, safely failing (and triggering AI remediation) if the remote repository already contains conflicting code
 
 ### Story 3.2: Reasoning Engine ADK Deployment & IAM Config
 
 As a platform engineer,
-I want the agent to automatically deploy the ADK agent and configure IAM policies after my repos are seeded,
+I want the skill to automatically deploy the ADK agent and configure IAM policies after my repos are seeded,
 So that the Reasoning Engine is fully functional without manual script execution.
 
 **Acceptance Criteria:**
 
 **Given** the CI repositories have been successfully seeded and pushed
 **When** the ADK deployment stage begins
-**Then** the agent must execute the Python script to deploy the reasoning engine ADK agent
-**And** execute the bash scripts to configure IAP IAM egress policies using the subprocess wrapper
+**Then** the skill must execute the Python script to deploy the reasoning engine ADK agent
+**And** execute the bash scripts to configure IAP IAM egress policies using the `run_command` wrapper
 
 ### Story 3.3: Context-Aware Status Interruption
 
 As a platform engineer,
-I want to be able to ask the agent for its current status during a long deployment,
-So that I know the agent hasn't hung and I can see how much work is left.
+I want to be able to ask the skill for its current status during a long deployment,
+So that I know the skill hasn't hung and I can see how much work is left.
 
 **Acceptance Criteria:**
 
-**Given** the agent is executing a long-running subprocess (like terraform or git pushing)
+**Given** the skill is executing a long-running `run_command` (like terraform or git pushing)
 **When** the user attempts to query status
-**Then** the agent must handle this gracefully (e.g., by intercepting `SIGINT` / Ctrl+C to pause and show a status menu instead of immediately killing the process, OR by using non-blocking asynchronous stdout readers)
+**Then** the skill must handle this gracefully (e.g., by intercepting `SIGINT` / Ctrl+C to pause and show a status menu instead of immediately killing the process, OR by using non-blocking asynchronous stdout readers)
 **And** output the currently running pipeline step
 **And** list all remaining pipeline steps that are still pending
-**And** resume its execution without breaking the underlying subprocess if the user chooses to continue
+**And** resume its execution without breaking the underlying `run_command` if the user chooses to continue

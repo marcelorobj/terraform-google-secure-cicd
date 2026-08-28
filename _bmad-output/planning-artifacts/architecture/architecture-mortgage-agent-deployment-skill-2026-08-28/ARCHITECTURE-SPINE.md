@@ -27,21 +27,21 @@ The skill operates as a sequential pipeline of discrete stages (Prerequisites, C
 - **Prevents:** Split-brain scenarios where a local state file diverges from actual GCP/Git infrastructure state.
 - **Rule:** The skill MUST NOT use a local state file (e.g., `.deploy_state.json`) to track progress. It MUST query the actual environment for the **successful end-state** (e.g., checking specific `terraform output` values, verifying the remote Git CI repo HEAD actually contains the pushed files) rather than just the presence of intermediate artifacts (like a local `.terraform/` folder), to accurately determine if a stage is fully completed.
 
-### AD-2 — Direct Subprocess Execution
+### AD-2 — Direct `run_command` Execution
 - **Binds:** CAP-3, CAP-4
-- **Prevents:** Logic drift between the official `README.md` instructions and the agent's internal implementation.
-- **Rule:** The skill MUST use Python's `subprocess.run` (or equivalent) to execute external tools (`terraform`, `envsubst`, `git`, `bash`) directly. To prevent silent hangs when capturing output, it MUST use non-interactive automation flags (e.g., `terraform apply -auto-approve`) for any command that natively prompts for user input, and SHOULD enforce sensible timeouts. It MUST NOT replace these with native Python library equivalents (like `GitPython`) unless strictly necessary.
+- **Prevents:** Logic drift between the official `README.md` instructions and the skill's internal implementation.
+- **Rule:** The skill MUST use Antigravity CLI's `run_command` tool (or equivalent) to execute external cli commands (`terraform`, `envsubst`, `git`, `bash`) directly. To prevent silent hangs when capturing output, it MUST use non-interactive automation flags (e.g., `terraform apply -auto-approve`) for any command that natively prompts for user input, and SHOULD enforce sensible timeouts. It MUST NOT replace these with native Python library equivalents (like `GitPython`) unless strictly necessary.
 
 ### AD-3 — AI-Assisted Error Remediation
 - **Binds:** All pipeline execution stages.
 - **Prevents:** Frustrating user experiences where the skill halts on cryptic shell errors (e.g., Terraform quota limits, Git auth failures) and forces a full restart.
-- **Rule:** If a subprocess returns a non-zero exit code, the skill MUST catch the error, pass **both `stdout` and `stderr`** (or a merged output) to an LLM context to generate a human-readable diagnosis and remediation step, present this to the user, and prompt for an interactive retry `(y/n)` of that specific stage.
+- **Rule:** If a `run_command` returns a non-zero exit code, the skill MUST catch the error, pass **both `stdout` and `stderr`** (or a merged output) to an LLM context to generate a human-readable diagnosis and remediation step, present this to the user, and prompt for an interactive retry `(y/n)` of that specific stage.
 
 ## Consistency Conventions
 
 | Concern | Convention |
 | --- | --- |
-| Subprocess Execution | Use `capture_output=True, text=True` to ensure both `stdout` and `stderr` can be passed to the LLM upon failure. Exceptions apply for inherently interactive shell commands (like `gcloud auth login`) which MUST NOT capture output so the user can interact with the browser/terminal prompts. |
+| `run_command` Execution | Use `capture_output=True, text=True` to ensure both `stdout` and `stderr` can be passed to the LLM upon failure. Exceptions apply for inherently interactive shell commands (like `gcloud auth login`) which MUST NOT capture output so the user can interact with the browser/terminal prompts. |
 | User Prompts | Use standard Antigravity CLI prompt utilities for yes/no and text input gathering. |
 
 ## Stack
