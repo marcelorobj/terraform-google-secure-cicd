@@ -18,7 +18,7 @@ data "google_project" "project" {
 }
 
 resource "google_service_account" "build_sa" {
-  account_id   = "build-sa"
+  account_id   = "build-sa-${var.secure_pipeline_name}"
   display_name = "Service Account for ${var.csr_app_source_repo} Cloud Build triggers"
   project      = var.project_id
 }
@@ -97,7 +97,6 @@ resource "time_sleep" "wait_access_level_propagation" {
   depends_on = [
     google_project_service_identity.cloudbuild_service_identity,
     google_project_service_identity.cloud_deploy_sa,
-    google_project_service_identity.pubsub_sa,
     google_service_account.build_sa,
   ]
   destroy_duration = "5m"
