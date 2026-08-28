@@ -57,6 +57,8 @@ spec:
       - name: workerpool-gke-ha-vpn
         location: modules/workerpool-gke-ha-vpn
     examples:
+      - name: mortgage-agent
+        location: examples/mortgage-agent
       - name: standalone_single_project
         location: examples/standalone_single_project
   interfaces: {}

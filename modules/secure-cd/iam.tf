@@ -31,11 +31,13 @@ locals {
 
 resource "google_service_account" "clouddeploy_execution_sa" {
   project      = var.project_id
-  account_id   = "clouddeploy-execution-sa"
+  account_id   = "cd-exec-sa-${var.secure_pipeline_name}"
   display_name = "clouddeploy-execution-sa"
 }
 
 resource "google_access_context_manager_access_level_condition" "additional_member_condition" {
+  count = var.access_level_name != null ? 1 : 0
+
   access_level = var.access_level_name
 
   members = [
