@@ -13,9 +13,11 @@ This runbook guides the agent in deploying the mortgage-agent example.
 - Run `gcloud auth print-access-token` to check for active credentials.
 - If it fails, instruct the user to run `gcloud auth login` and `gcloud auth application-default login`.
 
-### 1.3: Check GCP Project
-- Run `gcloud config get-value project` to check for an active project.
-- If not set, ask the user for their GCP Project ID and run `gcloud config set project [PROJECT_ID]`.
+### 1.3: Confirm GCP Project
+- Run `gcloud config get-value project` to find the currently configured project.
+- If a project is found, ask the user for confirmation: "I've detected the project '[PROJECT_NAME]' is configured. Do you want to use this one for the deployment?".
+- If the user agrees, proceed. If the user disagrees, or if no project was initially configured, prompt the user to enter the correct Project ID.
+- Run `gcloud config set project [CHOSEN_PROJECT_ID]` to ensure the correct project is active for all subsequent commands.
 
 ### 1.4: Check for Public DNS Zone
 - Ask the user if they have a public DNS zone.
@@ -30,12 +32,32 @@ This runbook guides the agent in deploying the mortgage-agent example.
 
 # Stage 2: Configuration
 
-### 2.1: Gather Terraform Variables
-- Prompt the user for all required variables for the `terraform.tfvars` file.
-- Sanitize and validate inputs, especially the 6 unique Git repository URLs.
+### 2.1: Gather Configuration Values
+- **User-Provided Values:** Prompt the user for the following information:
+    - Public DNS Domain Name (e.g., `example.com`).
+    - Terraform Service Account Email.
+    - **The URLs for the 6 required Git repositories.** The agent must explain that for each of the three microservices, a separate repository for Continuous Integration (CI - source code) and Continuous Delivery (CD - deployment configs) is required, and then ask for them individually:
+        - **Legacy DMS Service:**
+            - CI Repository URL (e.g., `https://github.com/user/legacy-dms-ci.git`)
+            - CD Repository URL (e.g., `https://github.com/user/legacy-dms-cd.git`)
+        - **Corporate Email Service:**
+            - CI Repository URL (e.g., `https://github.com/user/corporate-email-ci.git`)
+            - CD Repository URL (e.g., `https://github.com/user/corporate-email-cd.git`)
+        - **Income Verification Service:**
+            - CI Repository URL (e.g., `https://github.com/user/income-verification-ci.git`)
+            - CD Repository URL (e.g., `https://github.com/user/income-verification-cd.git`)
+    - The names (not the values) of the Secret Manager secrets for the GitHub PAT and App ID.
 
-### 2.2: Create terraform.tfvars
-- Create the `terraform.tfvars` file in the `examples/mortgage-agent` directory.
+- **Automatically-Derived Values:** The agent will obtain the following values programmatically:
+    - `project_id`: From the project confirmed in Stage 1.3.
+    - `project_number`: By running `gcloud projects describe [PROJECT_ID] --format='value(projectNumber)'`.
+    - `org_id`: By running `gcloud projects get-ancestors [PROJECT_ID] --format='get(id)'` and extracting the organization ID.
+
+### 2.2: Generate terraform.tfvars
+- Read the content of the `examples/mortgage-agent/terraform.example.tfvars` template file.
+- Programmatically replace the placeholder values using the variables gathered in Stage 2.1. This includes `project_id`, `project_number`, `org_id`, `dns_zone_domain`, the domain in `mcp_internal_dns_zone`, repository URLs, and secret names.
+- **CRITICAL RULE:** Do NOT modify the `image` attribute for any service in the `mcp_services` map. The value `"us-docker.pkg.dev/cloudrun/container/placeholder"` is the correct, final value and must be preserved.
+- Save the final, generated content to `examples/mortgage-agent/terraform.tfvars`.
 
 ---
 
