@@ -9,7 +9,10 @@ This runbook guides the agent in deploying the mortgage-agent example.
 ### 1.1: Welcome & Introduction
 - Greet the user and briefly explain the purpose of this skill.
 
-### 1.2: Check gcloud Authentication
+### 1.2: Configure Git Credential Helper
+- Run `git config --global credential.helper gcloud.sh` to configure Git to use gcloud credentials for authenticating to Google Cloud Source Repositories.
+
+### 1.3: Check gcloud Authentication
 - Run `gcloud auth print-access-token` to check for active credentials.
 - If it fails, instruct the user to run `gcloud auth login` and `gcloud auth application-default login`.
 
@@ -34,6 +37,7 @@ This runbook guides the agent in deploying the mortgage-agent example.
 
 ### 2.1: Gather Configuration Values
 - **User-Provided Values:** Prompt the user for the following information:
+    - **CRITICAL NOTE:** The repository names will also be used to create Cloud Build triggers. These trigger names do NOT support underscores (`_`). Therefore, when asking for repository names, use hyphens (`-`) instead and inform the user of this convention.
     - Public DNS Domain Name (e.g., `example.com`).
     - Terraform Service Account Email.
     - **The URLs for the 6 required Git repositories.** The agent must explain that for each of the three microservices, a separate repository for Continuous Integration (CI - source code) and Continuous Delivery (CD - deployment configs) is required, and then ask for them individually:
@@ -71,7 +75,7 @@ This runbook guides the agent in deploying the mortgage-agent example.
 - Ask for explicit approval to proceed.
 
 ### 3.2: Terraform Apply
-- Execute `scripts/01-terraform-apply.sh`.
+- Execute o script `.agents/skills/bmad-mortgage-agent-deployment/scripts/01-terraform-apply.sh` a partir do diretório raiz do projeto.
 
 ### 3.3: Extract Terraform Outputs
 - Run `terraform output -json` and save the output.
@@ -81,7 +85,55 @@ This runbook guides the agent in deploying the mortgage-agent example.
 # Stage 4: Application Deployment
 
 ### 4.1: Seed Repositories and Deploy
-- Execute `scripts/02-git-ops-and-adk.sh`, passing the Terraform outputs as environment variables.
+- Execute o script `.agents/skills/bmad-mortgage-agent-deployment/scripts/02-git-ops-and-adk.sh` a partir do diretório raiz do projeto, passando as URLs dos repositórios de CI/CD como variáveis de ambiente.
 
 ### 4.2: Final Status
 - Report the final status of the deployment to the user.
+
+---
+
+# Stage 5: Agent Deployment and Permissions
+
+### 5.1: Deploy the Agent
+- Change directory to `examples/mortgage-agent/src/mortgage_agent`.
+- Run `uv sync` to install dependencies.
+- Extract the necessary values from the Terraform outputs (`project_id`, `region`, `agent_gateway_id`, `mcp_invoker_sa`).
+- Construct and run the `deploy_agent.py` command:
+  ```bash
+  uv run python deploy_agent.py \
+  --project=[PROJECT_ID] \
+  --region=[REGION] \
+  --enable-agent-identity \
+  --agent-name=mortgage-agent \
+  --agent-gateway=[AGENT_GATEWAY_ID] \
+  --mcp-invoker-sa=[MCP_INVOKER_SA] \
+  --model-endpoint-location=global
+  ```
+- Capture the `AGENT_ID` from the output.
+
+### 5.2: Grant Agent Egress Permissions
+- Change directory back to the root of the project.
+- Run the `grant_agent_mcp_egress.sh` script to grant permissions for all agents to all endpoints.
+  ```bash
+  ./scripts/grant_agent_mcp_egress.sh --bind-all-agents --endpoints
+  ```
+- Run the script again to grant the specific agent unconditional access to `legacy-dms` and `income-verification`.
+  ```bash
+  ./scripts/grant_agent_mcp_egress.sh \
+     --mcp \
+     --agent-id [AGENT_ID] \
+     --mcp-filter "legacy-dms income-verification"
+  ```
+- Run the script a final time to grant conditional access to `corporate-email`.
+  ```bash
+  ./scripts/grant_agent_mcp_egress.sh \
+     --mcp \
+     --agent-id [AGENT_ID] \
+     --mcp-filter "corporate-email" \
+     --condition-expression "api.getAttribute('iap.googleapis.com/mcp.tool.isReadOnly', false) == true || api.getAttribute('iap.googleapis.com/mcp.toolName','')==''" \
+     --condition-title "ReadOnlyToolsOnly" \
+     --condition-description "Restrict [AGENT_ID] to read-only tools on corporate-email"
+  ```
+
+### 5.3: Final Report
+- Inform the user that the agent is fully deployed and ready for testing in the Agent Platform Playground.

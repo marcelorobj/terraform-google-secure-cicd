@@ -2,49 +2,75 @@
 
 set -e
 
-# This script is responsible for the following:
-# 1. Templating manifests using envsubst
-# 2. Seeding the 3 CI repositories
-# 3. Deploying the ADK agent
-# 4. Configuring IAP IAM egress policies
+# This script is responsible for seeding the CI and CD repositories for a given service.
+# It uses an OAuth2 access token for authentication.
 
-# The terraform outputs are passed as environment variables.
+# Usage:
+# export CI_REPO_URL="https://source.developers.google.com/p/your-project/r/your-ci-repo"
+# export CD_REPO_URL="https://source.developers.google.com/p/your-project/r/your-cd-repo"
+# ./02-git-ops-and-adk.sh <service_name> <git_email> <git_name>
 
-# Example for one service (legacy-dms)
+SERVICE_NAME=$1
+GIT_USER_EMAIL=$2
+GIT_USER_NAME=$3
 
-# Template the manifests
-export CI_REPO_URL_LEGACY_DMS
-export CD_REPO_URL_LEGACY_DMS
+if [ -z "$SERVICE_NAME" ] || [ -z "$GIT_USER_EMAIL" ] || [ -z "$GIT_USER_NAME" ]; then
+  echo "Error: SERVICE_NAME, GIT_USER_EMAIL, and GIT_USER_NAME must be provided as arguments."
+  exit 1
+fi
 
-TEMP_DIR=$(mktemp -d)
+if [ -z "$CI_REPO_URL" ] || [ -z "$CD_REPO_URL" ]; then
+  echo "Error: CI_REPO_URL and CD_REPO_URL environment variables must be set."
+  exit 1
+fi
 
-# Copy source files
-cp -r src/legacy-dms/* $TEMP_DIR
+# Get OAuth2 access token
+ACCESS_TOKEN=$(gcloud secrets versions access latest --secret="github-pat")
 
-# Template and copy manifests
-envsubst < examples/mortgage-agent/cloud_run/legacy-dms.yaml > $TEMP_DIR/legacy-dms.yaml
-envsubst < skaffold.yaml > $TEMP_DIR/skaffold.yaml # Assuming a skaffold template is available
+# Construct authenticated URLs
+AUTH_CI_REPO_URL="https://oauth2accesstoken:$ACCESS_TOKEN@${CI_REPO_URL#https://}"
+AUTH_CD_REPO_URL="https://oauth2accesstoken:$ACCESS_TOKEN@${CD_REPO_URL#https://}"
 
-# Copy build files
-cp build/cloudbuild-ci.yaml $TEMP_DIR
-cp -r build/policies $TEMP_DIR
+# --- Seeding CI Repository ---
+echo "--- Seeding CI Repository for $SERVICE_NAME ---"
+CI_TEMP_DIR=$(mktemp -d)
+echo "Using temporary directory for CI: $CI_TEMP_DIR"
 
-# Git operations
-cd $TEMP_DIR
+cp -r "examples/mortgage-agent/src/$SERVICE_NAME/"* "$CI_TEMP_DIR/"
+cp "build/cloudbuild-ci.yaml" "$CI_TEMP_DIR/"
+cp -r "build/policies" "$CI_TEMP_DIR/"
+
+cd "$CI_TEMP_DIR"
 git init
+git config user.email "$GIT_USER_EMAIL"
+git config user.name "$GIT_USER_NAME"
 git checkout -b main
 git add .
-git commit -m "Initial commit"
-git remote add origin $CI_REPO_URL_LEGACY_DMS
-git push origin main
+git commit -m "Initial commit for $SERVICE_NAME CI"
+git remote add origin "$AUTH_CI_REPO_URL"
+git push -u origin main
+cd - > /dev/null
+rm -rf "$CI_TEMP_DIR"
+echo "CI Repository for $SERVICE_NAME seeded successfully."
 
-cd -
-rm -rf $TEMP_DIR
+# --- Seeding CD Repository ---
+echo "--- Seeding CD Repository for $SERVICE_NAME ---"
+CD_TEMP_DIR=$(mktemp -d)
+echo "Using temporary directory for CD: $CD_TEMP_DIR"
 
-# ... (Repeat for other 2 services)
+cp "examples/mortgage-agent/cloud_run/$SERVICE_NAME.yaml" "$CD_TEMP_DIR/"
 
-# Deploy ADK
-# python scripts/deploy_adk.py # Assuming this script exists
+cd "$CD_TEMP_DIR"
+git init
+git config user.email "$GIT_USER_EMAIL"
+git config user.name "$GIT_USER_NAME"
+git checkout -b main
+git add .
+git commit -m "Initial commit for $SERVICE_NAME CD"
+git remote add origin "$AUTH_CD_REPO_URL"
+git push -u origin main
+cd - > /dev/null
+rm -rf "$CD_TEMP_DIR"
+echo "CD Repository for $SERVICE_NAME seeded successfully."
 
-# Configure IAM
-# ./scripts/configure_iam.sh # Assuming this script exists
+echo "Done with $SERVICE_NAME."
