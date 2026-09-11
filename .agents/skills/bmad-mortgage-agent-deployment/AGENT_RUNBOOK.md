@@ -6,8 +6,20 @@ This runbook guides the agent in deploying the mortgage-agent example.
 
 # Stage 1: Prerequisites
 
-### 1.1: Welcome & Introduction
-- Greet the user and briefly explain the purpose of this skill.
+### 1.1: Welcome, Introduction & Architecture Overview
+- Greet the user, introduce the deployment process, and provide an overview of what the **Mortgage Assistant Agent** is:
+  - **What is the Mortgage Agent?**
+    The Mortgage Agent is an enterprise reference implementation of an AI agent built with the **Google Agent Development Kit (ADK)** and hosted on **Vertex AI Reasoning Engine (Agent Runtime)**. It functions as an automated underwriting assistant for loan officers processing mortgage applications.
+  - **Core Responsibilities:**
+    - **Document Retrieval (`legacy-dms`):** Connects to a document management service to retrieve applicant tax forms (e.g., 1040s) and pay stubs.
+    - **Income Verification (`income-verification`):** Queries a verification API to cross-reference reported wages and employer data.
+    - **Underwriting Calculation:** Computes debt-to-income (DTI) metrics and surfaces discrepancies between tax returns and employer reports.
+    - **Corporate Communications (`corporate-email`):** Interacts with the company inbox to read communications and draft applicant updates.
+  - **Key Enterprise Architecture Pillars:**
+    - **Zero-Trust Identity & Access:** Uses granular **Agent Identity** and an **Agent Gateway** with Identity-Aware Proxy (IAP) policies to enforce least-privilege egress (e.g., restricting email access to read-only tools).
+    - **In-Flight Data Protection (Model Armor + Cloud DLP):** Automatically detects and redacts sensitive PII (such as Social Security Numbers) from tool outputs before they reach the model or user.
+    - **Dynamic Discovery (MCP):** Uses the Model Context Protocol to discover backend microservice tools via Google Agent Registry at startup.
+    - **Secure Software Supply Chain:** Backend microservices run on Cloud Run, provisioned through secure CI/CD pipelines featuring private Cloud Build pools, vulnerability scanning, and Binary Authorization signing.
 
 ### 1.2: Install Local Dependencies
 - The agent will check for the presence of `uv` and `gettext-base`.
