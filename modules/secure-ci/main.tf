@@ -94,7 +94,7 @@ resource "google_cloudbuild_trigger" "csr_app_build_trigger" {
 resource "google_cloudbuild_trigger" "app_build_trigger" {
   count    = local.use_csr ? 0 : 1
   project  = var.project_id
-  name     = "${local.second_gen_repo_name}-trigger"
+  name     = "$[var.secure_pipeline_name]-trigger"
   location = var.primary_location
   repository_event_config {
     repository = local.second_gen_repo_id

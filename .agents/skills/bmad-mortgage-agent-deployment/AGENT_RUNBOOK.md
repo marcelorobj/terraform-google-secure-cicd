@@ -9,24 +9,40 @@ This runbook guides the agent in deploying the mortgage-agent example.
 ### 1.1: Welcome & Introduction
 - Greet the user and briefly explain the purpose of this skill.
 
-### 1.2: Configure Git Credential Helper
-- Run `git config --global credential.helper gcloud.sh` to configure Git to use gcloud credentials for authenticating to Google Cloud Source Repositories.
+### 1.2: Install Local Dependencies
+- The agent will check for the presence of `uv` and `gettext-base`.
+- If `uv` is not found, it will be installed by running: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- If `gettext-base` is not found, it will be installed by running: `sudo apt-get update && sudo apt-get install -y gettext-base`
 
 ### 1.3: Check gcloud Authentication
-- Run `gcloud auth print-access-token` to check for active credentials.
-- If it fails, instruct the user to run `gcloud auth login` and `gcloud auth application-default login`.
+- **User Account:** Run `gcloud auth print-access-token` to check for active user credentials. If it fails, instruct the user to run `gcloud auth login`.
+- **Application Default Credentials:** Run `gcloud auth application-default print-access-token` to check for active application default credentials. If it fails, instruct the user to run `gcloud auth application-default login`.
 
-### 1.3: Confirm GCP Project
+### 1.4: Confirm GCP Project
 - Run `gcloud config get-value project` to find the currently configured project.
 - If a project is found, ask the user for confirmation: "I've detected the project '[PROJECT_NAME]' is configured. Do you want to use this one for the deployment?".
 - If the user agrees, proceed. If the user disagrees, or if no project was initially configured, prompt the user to enter the correct Project ID.
 - Run `gcloud config set project [CHOSEN_PROJECT_ID]` to ensure the correct project is active for all subsequent commands.
 
-### 1.4: Check for Public DNS Zone
+### 1.5: Enable Required Google Cloud APIs
+- Run the following command to enable all necessary APIs. If an API is already enabled, the command will be ignored for that API.
+  ```bash
+  gcloud services enable \
+     cloudkms.googleapis.com \
+     compute.googleapis.com \
+     serviceusage.googleapis.com \
+     cloudresourcemanager.googleapis.com \
+     iam.googleapis.com \
+     storage.googleapis.com \
+     dns.googleapis.com \
+     clouddeploy.googleapis.com
+  ```
+
+### 1.6: Check for Public DNS Zone
 - Ask the user if they have a public DNS zone.
 - If not, provide instructions on how to create one using Google Cloud Domains.
 
-### 1.5: Check for Organization Policies
+### 1.7: Check for Organization Policies
 - Run `gcloud resource-manager org-policies describe constraints/gcp.restrictNonCmekServices --project=[PROJECT_ID]`.
 - If the policy is enforced, halt and explain the blocker.
 - Handle `PERMISSION_DENIED` errors gracefully.
@@ -37,7 +53,6 @@ This runbook guides the agent in deploying the mortgage-agent example.
 
 ### 2.1: Gather Configuration Values
 - **User-Provided Values:** Prompt the user for the following information:
-    - **CRITICAL NOTE:** The repository names will also be used to create Cloud Build triggers. These trigger names do NOT support underscores (`_`). Therefore, when asking for repository names, use hyphens (`-`) instead and inform the user of this convention.
     - Public DNS Domain Name (e.g., `example.com`).
     - Terraform Service Account Email.
     - **The URLs for the 6 required Git repositories.** The agent must explain that for each of the three microservices, a separate repository for Continuous Integration (CI - source code) and Continuous Delivery (CD - deployment configs) is required, and then ask for them individually:
@@ -53,7 +68,7 @@ This runbook guides the agent in deploying the mortgage-agent example.
     - The names (not the values) of the Secret Manager secrets for the GitHub PAT and App ID.
 
 - **Automatically-Derived Values:** The agent will obtain the following values programmatically:
-    - `project_id`: From the project confirmed in Stage 1.3.
+    - `project_id`: From the project confirmed in Stage 1.5.
     - `project_number`: By running `gcloud projects describe [PROJECT_ID] --format='value(projectNumber)'`.
     - `org_id`: By running `gcloud projects get-ancestors [PROJECT_ID] --format='get(id)'` and extracting the organization ID.
 
@@ -75,57 +90,100 @@ This runbook guides the agent in deploying the mortgage-agent example.
 - Ask for explicit approval to proceed.
 
 ### 3.2: Terraform Apply
-- Execute o script `.agents/skills/bmad-mortgage-agent-deployment/scripts/01-terraform-apply.sh` a partir do diretório raiz do projeto.
-
-### 3.3: Extract Terraform Outputs
-- Run `terraform output -json` and save the output.
+- Run the script `.agents/skills/bmad-mortgage-agent-deployment/scripts/01-terraform-apply.sh` from the root directory.
 
 ---
-
+ 
 # Stage 4: Application Deployment
-
-### 4.1: Seed Repositories and Deploy
-- Execute o script `.agents/skills/bmad-mortgage-agent-deployment/scripts/02-git-ops-and-adk.sh` a partir do diretório raiz do projeto, passando as URLs dos repositórios de CI/CD como variáveis de ambiente.
-
-### 4.2: Final Status
-- Report the final status of the deployment to the user.
-
+ 
+### 4.1: Render Skaffold and Cloud Run YAMLs
+- For every MCP service, create the definitive `skaffold.yaml` and `cloud_run/*.yaml` files out of their respective `.tmpl` templates.
+- Because `envsubst` pulls from the environment, ensure each service is processed in a single shell command that resolves the variables from Terraform beforehand. `DOMAIN_NAME` is the Public DNS Domain Name supplied by the user in Stage 2.1.
+- Execute from the project's root folder, looping through each service:
+```bash
+  # Example for 'legacy-dms':
+  cd examples/mortgage-agent
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export MCP_INGRESS=$(terraform output -raw mcp_cloud_run_ingress_annotation)
+  export BUCKET_NAME=$(terraform output -raw cloudbuild_bucket)
+  export DOMAIN_NAME=[PUBLIC_DNS_DOMAIN]
+  cd src/legacy-dms
+  envsubst '${PROJECT_ID} ${REGION} ${MCP_INGRESS} ${BUCKET_NAME}' < skaffold.yaml.tmpl > skaffold.yaml
+  cd ../../cloud_run
+  envsubst '${PROJECT_ID} ${REGION} ${MCP_INGRESS} ${DOMAIN_NAME}' < legacy-dms.yaml.tmpl > legacy-dms.yaml
+```
+- Do the exact same for `corporate-email` and `income-verification-api`.
+- Go back to the project root directory before moving to the next step.
+### 4.2: Seed the CI Repositories
+- Run the `.agents/skills/bmad-mortgage-agent-deployment/scripts/02-git-ops-and-adk.sh` script from the project root, one time for each MCP service.
+- **Arguments:** the script requires `<service_name> <git_email> <git_name>`. Request the Git author email and name from the user for these seed commits.
+- **Environment:** the script depends on `GITHUB_PAT_SECRET` and `CI_REPO_URL`. Ensure both are exported within the same shell session that invokes the script.
+- **CRITICAL — service names:** loop through the source directory names exactly in this sequence:
+  1. `legacy-dms`
+  2. `corporate-email`
+  3. `income-verification-api`
+- **CRITICAL — repository mapping:** the third service has different naming conventions depending on the context. When handling `income-verification-api`, make sure to set `CI_REPO_URL` to the `income-verification-ci` URL obtained in Stage 2.1.
+- This script populates only the CI repository. The CD repositories are established via Terraform but left empty: since there is only a single environment, no CD trigger is set up and the delivery is handled entirely by the CI build.
+### 4.3: Final Status
+- Report the final status of the application deployment to the user.
 ---
-
+ 
 # Stage 5: Agent Deployment and Permissions
-
-### 5.1: Deploy the Agent
-- Change directory to `examples/mortgage-agent/src/mortgage_agent`.
-- Run `uv sync` to install dependencies.
-- Extract the necessary values from the Terraform outputs (`project_id`, `region`, `agent_gateway_id`, `mcp_invoker_sa`).
-- Construct and run the `deploy_agent.py` command:
-  ```bash
+ 
+### 5.1: Allow Egress for All Agents Across Endpoints
+- **Execute this prior to deploying the agent.** The agent requires external access during deployment to pull packages from github.com and reach the essential Google APIs.
+- The script depends on `PROJECT_ID`, `PROJECT_NUMBER`, `ORG_ID`, and `REGION` being exported in the environment, and will terminate if any is absent. Resolve them all in the same shell session before running.
+- Switch directory to `examples/mortgage-agent`.
+```bash
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+  export ORG_ID=$(gcloud projects get-ancestors $PROJECT_ID --format='get(id)' | tail -1)
+  ./scripts/grant_agent_mcp_egress.sh --bind-all-agents --endpoints
+```
+ 
+### 5.2: Deploy the Agent
+- Build and execute the `deploy_agent.py` script. By using `--enable-agent-identity`, this script calls `grant_agent_mcp_egress.sh` in the background and pulls `ORG_ID` and `PROJECT_NUMBER` from the environment (it will halt if they are missing). Resolve these variables from `examples/mortgage-agent`, and then move to the agent directory:
+```bash
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export AGENT_GATEWAY_ID=$(terraform output -raw agent_gateway_id)
+  export MCP_INVOKER_SA=$(terraform output -raw agent_mcp_invoker_email)
+  export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+  export ORG_ID=$(gcloud projects get-ancestors $PROJECT_ID --format='get(id)' | tail -1)
+  cd src/mortgage_agent
+  uv sync
   uv run python deploy_agent.py \
-  --project=[PROJECT_ID] \
-  --region=[REGION] \
+  --project=$PROJECT_ID \
+  --region=$REGION \
   --enable-agent-identity \
   --agent-name=mortgage-agent \
-  --agent-gateway=[AGENT_GATEWAY_ID] \
-  --mcp-invoker-sa=[MCP_INVOKER_SA] \
+  --agent-gateway=$AGENT_GATEWAY_ID \
+  --mcp-invoker-sa=$MCP_INVOKER_SA \
   --model-endpoint-location=global
-  ```
-- Capture the `AGENT_ID` from the output.
-
-### 5.2: Grant Agent Egress Permissions
-- Change directory back to the root of the project.
-- Run the `grant_agent_mcp_egress.sh` script to grant permissions for all agents to all endpoints.
-  ```bash
-  ./scripts/grant_agent_mcp_egress.sh --bind-all-agents --endpoints
-  ```
-- Run the script again to grant the specific agent unconditional access to `legacy-dms` and `income-verification`.
-  ```bash
+```
+- Record the numeric `reasoningEngines/` ID printed on completion; it is needed in Stages 5.3 and 5.4. Then return to `examples/mortgage-agent` with `cd ../../`.
+ 
+### 5.3: Grant Agent Per-MCP-Server Egress
+- As in Stage 5.1, the four variables must be present in the shell session that executes the script. Run this from `examples/mortgage-agent`.
+- Provide the specific agent with unrestricted access to `legacy-dms` and `income-verification`.
+```bash
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+  export ORG_ID=$(gcloud projects get-ancestors $PROJECT_ID --format='get(id)' | tail -1)
   ./scripts/grant_agent_mcp_egress.sh \
      --mcp \
      --agent-id [AGENT_ID] \
      --mcp-filter "legacy-dms income-verification"
-  ```
-- Run the script a final time to grant conditional access to `corporate-email`.
-  ```bash
+```
+- Execute the script one more time to give conditional access for `corporate-email`.
+```bash
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+  export ORG_ID=$(gcloud projects get-ancestors $PROJECT_ID --format='get(id)' | tail -1)
   ./scripts/grant_agent_mcp_egress.sh \
      --mcp \
      --agent-id [AGENT_ID] \
@@ -133,7 +191,18 @@ This runbook guides the agent in deploying the mortgage-agent example.
      --condition-expression "api.getAttribute('iap.googleapis.com/mcp.tool.isReadOnly', false) == true || api.getAttribute('iap.googleapis.com/mcp.toolName','')==''" \
      --condition-title "ReadOnlyToolsOnly" \
      --condition-description "Restrict [AGENT_ID] to read-only tools on corporate-email"
-  ```
-
-### 5.3: Final Report
+```
+ 
+### 5.4: Verify the Bindings
+- Guide the user to the [Policies tab](https://console.cloud.google.com/agent-platform/policies/iam) to double-check the policies applied to the Endpoints and MCP Servers.
+- Should the endpoints lack policies, execute the script with this configuration
+```bash
+  export PROJECT_ID=$(terraform output -raw project_id)
+  export REGION=$(terraform output -raw region)
+  export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+  export ORG_ID=$(gcloud projects get-ancestors $PROJECT_ID --format='get(id)' | tail -1)
+  ./scripts/grant_agent_mcp_egress.sh --agent-id [AGENT_ID] --endpoints
+```
+ 
+### 5.5: Final Report
 - Inform the user that the agent is fully deployed and ready for testing in the Agent Platform Playground.

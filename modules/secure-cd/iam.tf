@@ -26,7 +26,10 @@ locals {
 
   cd_sa_required_roles = [
     "roles/clouddeploy.jobRunner",
-  ]
+    "roles/run.developer",
+    "roles/artifactregistry.admin",
+    "roles/iam.serviceAccountUser",
+    ]
 }
 
 resource "google_service_account" "clouddeploy_execution_sa" {

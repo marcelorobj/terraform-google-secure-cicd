@@ -2,12 +2,12 @@
 
 set -e
 
-# This script is responsible for seeding the CI and CD repositories for a given service.
-# It uses an OAuth2 access token for authentication.
+# This script handles the initial population of the CI repository for a specific service.
+# It uses a Personal Access Token retrieved from Secret Manager to authenticate with GitHub.
 
-# Usage:
-# export CI_REPO_URL="https://source.developers.google.com/p/your-project/r/your-ci-repo"
-# export CD_REPO_URL="https://source.developers.google.com/p/your-project/r/your-cd-repo"
+# Usage example:
+# export CI_REPO_URL="https://github.com/your-org/your-ci-repo.git"
+# export GITHUB_PAT_SECRET="your-github-pat-secret-name"
 # ./02-git-ops-and-adk.sh <service_name> <git_email> <git_name>
 
 SERVICE_NAME=$1
@@ -15,62 +15,75 @@ GIT_USER_EMAIL=$2
 GIT_USER_NAME=$3
 
 if [ -z "$SERVICE_NAME" ] || [ -z "$GIT_USER_EMAIL" ] || [ -z "$GIT_USER_NAME" ]; then
-  echo "Error: SERVICE_NAME, GIT_USER_EMAIL, and GIT_USER_NAME must be provided as arguments."
+  echo "Error: You must provide SERVICE_NAME, GIT_USER_EMAIL, and GIT_USER_NAME as arguments."
   exit 1
 fi
 
-if [ -z "$CI_REPO_URL" ] || [ -z "$CD_REPO_URL" ]; then
-  echo "Error: CI_REPO_URL and CD_REPO_URL environment variables must be set."
+if [ -z "$CI_REPO_URL" ] || [ -z "$GITHUB_PAT_SECRET" ]; then
+  echo "Error: The environment variables CI_REPO_URL and GITHUB_PAT_SECRET are required."
   exit 1
 fi
 
-# Get OAuth2 access token
-ACCESS_TOKEN=$(gcloud secrets versions access latest --secret="github-pat")
+# Fetch the Personal Access Token for GitHub from Secret Manager
+GITHUB_PAT=$(gcloud secrets versions access latest --secret="$GITHUB_PAT_SECRET")
 
-# Construct authenticated URLs
-AUTH_CI_REPO_URL="https://oauth2accesstoken:$ACCESS_TOKEN@${CI_REPO_URL#https://}"
-AUTH_CD_REPO_URL="https://oauth2accesstoken:$ACCESS_TOKEN@${CD_REPO_URL#https://}"
+# Build the authenticated URL (GitHub requires x-access-token as the username)
+AUTH_CI_REPO_URL="https://x-access-token:$GITHUB_PAT@${CI_REPO_URL#https://}"
 
-# --- Seeding CI Repository ---
-echo "--- Seeding CI Repository for $SERVICE_NAME ---"
+# Populates a remote repository with the contents of a prepared directory.
+# If the remote repository already contains commits, it clones the repo and adds a new commit.
+# If it is empty, it initializes a fresh repository and pushes the initial commit.
+# Required parameters: <content_dir> <authenticated_url> <commit_message>
+seed_repo() (
+  CONTENT_DIR=$1
+  REPO_URL=$2
+  COMMIT_MSG=$3
+
+  if git ls-remote --heads "$REPO_URL" 2>/dev/null | grep -q .; then
+    echo "The remote repository already has commits. Proceeding to clone and update."
+    WORK_DIR=$(mktemp -d)
+    git clone "$REPO_URL" "$WORK_DIR"
+    cp -r "$CONTENT_DIR"/. "$WORK_DIR"/
+    cd "$WORK_DIR"
+    git config user.email "$GIT_USER_EMAIL"
+    git config user.name "$GIT_USER_NAME"
+    git add -A
+    if git diff --cached --quiet; then
+      echo "No modifications detected. The repository is already up to date."
+    else
+      git commit -m "$COMMIT_MSG"
+      git push origin HEAD
+    fi
+    rm -rf "$WORK_DIR"
+  else
+    echo "The remote repository is empty. Initializing a fresh repository."
+    cd "$CONTENT_DIR"
+    git init
+    git config user.email "$GIT_USER_EMAIL"
+    git config user.name "$GIT_USER_NAME"
+    git checkout -b main
+    git add .
+    git commit -m "$COMMIT_MSG"
+    git remote add origin "$REPO_URL"
+    git push -u origin main
+  fi
+)
+
+# --- Populating CI Repository ---
+echo "--- Starting CI Repository seeding for $SERVICE_NAME ---"
 CI_TEMP_DIR=$(mktemp -d)
-echo "Using temporary directory for CI: $CI_TEMP_DIR"
+echo "CI temporary directory in use: $CI_TEMP_DIR"
 
 cp -r "examples/mortgage-agent/src/$SERVICE_NAME/"* "$CI_TEMP_DIR/"
+cp "examples/mortgage-agent/cloud_run/$SERVICE_NAME.yaml" "$CI_TEMP_DIR/"
 cp "build/cloudbuild-ci.yaml" "$CI_TEMP_DIR/"
 cp -r "build/policies" "$CI_TEMP_DIR/"
 
-cd "$CI_TEMP_DIR"
-git init
-git config user.email "$GIT_USER_EMAIL"
-git config user.name "$GIT_USER_NAME"
-git checkout -b main
-git add .
-git commit -m "Initial commit for $SERVICE_NAME CI"
-git remote add origin "$AUTH_CI_REPO_URL"
-git push -u origin main
-cd - > /dev/null
+# We only need the rendered skaffold.yaml for the pipeline; removing the template file.
+rm -f "$CI_TEMP_DIR/skaffold.yaml.tmpl"
+
+seed_repo "$CI_TEMP_DIR" "$AUTH_CI_REPO_URL" "Initial commit for $SERVICE_NAME CI"
 rm -rf "$CI_TEMP_DIR"
-echo "CI Repository for $SERVICE_NAME seeded successfully."
+echo "The CI Repository for $SERVICE_NAME was seeded successfully."
 
-# --- Seeding CD Repository ---
-echo "--- Seeding CD Repository for $SERVICE_NAME ---"
-CD_TEMP_DIR=$(mktemp -d)
-echo "Using temporary directory for CD: $CD_TEMP_DIR"
-
-cp "examples/mortgage-agent/cloud_run/$SERVICE_NAME.yaml" "$CD_TEMP_DIR/"
-
-cd "$CD_TEMP_DIR"
-git init
-git config user.email "$GIT_USER_EMAIL"
-git config user.name "$GIT_USER_NAME"
-git checkout -b main
-git add .
-git commit -m "Initial commit for $SERVICE_NAME CD"
-git remote add origin "$AUTH_CD_REPO_URL"
-git push -u origin main
-cd - > /dev/null
-rm -rf "$CD_TEMP_DIR"
-echo "CD Repository for $SERVICE_NAME seeded successfully."
-
-echo "Done with $SERVICE_NAME."
+echo "Finished processing $SERVICE_NAME."
