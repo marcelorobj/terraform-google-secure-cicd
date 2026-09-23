@@ -51,6 +51,16 @@ locals {
       required_attestations = [module.attestors.binauth_attestor_ids["quality"], module.attestors.binauth_attestor_ids["security"], module.attestors.binauth_attestor_ids["build"]]
       env_attestation       = ""
       env_number            = 3
+      canary_percentages    = [10, 50]
+      runtime_config = {
+        kubernetes = {
+          service_networking = {
+            service                      = "frontend"
+            deployment                   = "frontend"
+            disable_pod_overprovisioning = true
+          }
+        }
+      }
     },
   }
 

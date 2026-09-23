@@ -65,6 +65,25 @@ spec:
               env_attestation       = string
               env_number            = number
               target_type           = string
+              canary_percentages    = optional(list(number))
+              runtime_config = optional(object({
+                cloud_run = optional(object({
+                  automatic_traffic_control = optional(bool)
+                }))
+                kubernetes = optional(object({
+                  service_networking = optional(object({
+                    service                      = string
+                    deployment                   = string
+                    disable_pod_overprovisioning = optional(bool)
+                  }))
+                  gateway_service_mesh = optional(object({
+                    http_route             = string
+                    service                = string
+                    deployment             = string
+                    route_update_wait_time = optional(string)
+                  }))
+                }))
+              }))
             }))
         defaultValue: {}
       - name: cache_bucket_name

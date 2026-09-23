@@ -342,8 +342,17 @@ func TestStandaloneSingleProjectExample(t *testing.T) {
 		}
 
 		if cloudDeployPipelineID != "" {
-			pipelineOp := gcloud.Runf(t, "deploy delivery-pipelines describe %s --project %s --region %s", cloudDeployPipelineID, projectID, region)
-			assert.NotEmpty(pipelineOp.Get("Delivery Pipeline.name").String(), fmt.Sprintf("Cloud Deploy pipeline %s should exist", cloudDeployPipelineID))
+			pipelineOp := gcloud.Runf(t, "deploy delivery-pipelines describe %s --project %s --region %s --format=json", cloudDeployPipelineID, projectID, region)
+			assert.NotEmpty(pipelineOp.Get("name").String(), fmt.Sprintf("Cloud Deploy pipeline %s should exist", cloudDeployPipelineID))
+			stages := pipelineOp.Get("serialPipeline.stages").Array()
+			assert.NotEmpty(stages, "Pipeline should have stages")
+			if len(stages) >= 3 {
+				prodStage := stages[2]
+				assert.Equal("10", prodStage.Get("strategy.canary.canaryDeployment.percentages.0").String(), "Canary phase 1 percentage should be 10")
+				assert.Equal("50", prodStage.Get("strategy.canary.canaryDeployment.percentages.1").String(), "Canary phase 2 percentage should be 50")
+				assert.True(prodStage.Get("strategy.canary.canaryDeployment.verify").Bool(), "Canary verification guardrail should be enabled")
+				assert.True(prodStage.Get("strategy.canary.runtimeConfig.kubernetes.serviceNetworking.disablePodOverprovisioning").Bool(), "Pod overprovisioning should be disabled")
+			}
 		}
 
 		gkeClusters := standaloneSingleProjT.GetJsonOutput("gke_cluster_names").Map()
