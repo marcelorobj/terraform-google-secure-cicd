@@ -136,7 +136,7 @@ This will trigger the build phase of the CI/CD pipeline and result in the deploy
 1. You can see the output logs of the build by selecting the Build Log tab. <!-- <walkthrough-spotlight-pointer locator="css([track-name*='viewBuildLogTab'])"></walkthrough-spotlight-pointer> -->
 1. When the build completes, navigate to <walkthrough-menu-navigation sectionId="CLOUD_DEPLOY_SECTION">Cloud Deploy</walkthrough-menu-navigation> to view the progress of the deployment pipeline.
 1. On the Delivery pipelines page, select the pipeline in the <walkthrough-spotlight-pointer locator="css([aria-label='Delivery pipelines'])">list</walkthrough-spotlight-pointer>.
-1. On the Pipeline visualization page, you can see the progress of the deployment across your 3 environments. Containers will be automatically deployed to each environment after successfully completing the security tests at each stage.
+1. On the Pipeline visualization page, you can see the progress of the deployment across your 3 environments. Containers will be automatically deployed to each environment after successfully completing the security tests at each stage. In this example, the production environment is configured to use a progressive canary rollout (10% → 50% → 100%) with automated deployment verification.
 
 Once the application has gone through a successful rollout to all target environments, click **Next** to view the deployed application.
 

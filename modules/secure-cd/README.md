@@ -71,13 +71,14 @@ module "cd_pipeline" {
 
   deploy_branch_clusters = {
     "prod" = {
+      name                  = "prod"
       cluster               = "prod-cluster"
       anthos_membership     = ""
       project_id            = "my-gcp-project-id"
       location              = "us-central1"
       required_attestations = ["projects/my-gcp-project-id/attestors/qa-attestor"]
       env_attestation       = ""
-      next_env              = ""
+      env_number            = 1
       target_type           = "gke"
     }
   }
