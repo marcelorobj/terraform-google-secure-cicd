@@ -20,7 +20,7 @@ Software engineers and platform operators of all experience levels who need to d
 
 > **UJ-1. Alex deploys the Mortgage Agent from scratch.**
 > Alex, a Platform Engineer, opens the terminal in the repository and invokes the Mortgage Agent Deployment Skill.
-> 
+>
 > **Phase 1: Introduction & Prerequisites**
 > The skill greets Alex and briefly explains what the `mortgage-agent` example provisions. It then initiates an interactive checklist for prerequisites: Organization, Project, IAM Permissions, Public Domain, and Org Policies. Alex realizes he hasn't set up a Public Domain yet. The skill detects this and provides the exact Cloud Domains registration instructions. (If Alex hadn't had an Organization, the skill would state it's required but *not* attempt to guide him through creating one. If his Organization enforced `restrictNonCmekServices`, the skill would halt entirely).
 > 

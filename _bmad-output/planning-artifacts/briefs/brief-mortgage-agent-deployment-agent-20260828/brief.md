@@ -21,7 +21,7 @@ Deploying the `mortgage-agent` example today is fraught with friction for users.
 
 ## The Solution
 
-The Mortgage Agent Deployment Skill acts as a hybrid guide and automator. 
+The Mortgage Agent Deployment Skill acts as a hybrid guide and automator.
 
 **As a Guide:** 
 It walks users through the necessary manual prerequisites, explaining what GCP resources or configurations must be established first, and waits patiently for the user to complete them. 
@@ -40,7 +40,7 @@ Once prerequisites are met, the skill takes over the heavy lifting:
 
 ## What Makes This Different
 
-Instead of just providing a script or a static README, this skill provides an interactive, context-aware deployment companion. It bridges the gap between manual prerequisites that require human judgment (like org policies, domain registration, or billing setup) and the tedious mechanical tasks (like repo creation and terraform applies) that machines do best. 
+Instead of just providing a script or a static README, this skill provides an interactive, context-aware deployment companion. It bridges the gap between manual prerequisites that require human judgment (like org policies, domain registration, or billing setup) and the tedious mechanical tasks (like repo creation and terraform applies) that machines do best.
 
 ## Who This Serves
 

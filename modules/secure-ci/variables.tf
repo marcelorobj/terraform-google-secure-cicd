@@ -19,12 +19,6 @@ variable "project_id" {
   description = "Project ID for CICD Pipeline Project"
 }
 
-variable "secure_pipeline_name" {
-  type        = string
-  description = "Name of the secure pipeline, used to uniquely identify resources."
-  default     = "secure-pipeline"
-}
-
 variable "primary_location" {
   type        = string
   description = "Primary Google Cloud region for deploying resources like Artifact Registry, Cloud Storage buckets, and Cloud Build triggers."
@@ -46,16 +40,10 @@ variable "app_build_trigger_yaml" {
   description = "Name of application cloudbuild yaml file"
 }
 
-variable "csr_app_source_repo" {
-  type        = string
-  description = "Name of repo that contains app source code along with cloudbuild yaml"
-  default     = "app-source"
-}
-
 variable "cache_bucket_name" {
   type        = string
   description = "Name of cloudbuild artifact and cache GCS bucket"
-  default     = ""
+  default     = "bkt-cloudbuild"
 }
 
 variable "gar_repo_name_suffix" {
@@ -84,7 +72,6 @@ variable "cloudbuild_service_account_roles" {
     "roles/containeranalysis.notes.occurrences.viewer",
     "roles/iam.serviceAccountUser",
     "roles/serviceusage.serviceUsageConsumer",
-    "roles/source.writer",
     "roles/storage.admin",
     "roles/cloudbuild.workerPoolUser",
     "roles/ondemandscanning.admin",
@@ -123,8 +110,12 @@ variable "bucket_kms_key" {
 }
 
 variable "repository_type" {
-  description = "The type of the repository. Must be one of 'GITHUB', 'GITLAB', or 'CSR'."
+  description = "The type of the repository. Must be one of 'GITHUB' or 'GITLAB'."
   type        = string
+  validation {
+    condition     = contains(["GITHUB", "GITLAB"], var.repository_type)
+    error_message = "The repository_type must be either 'GITHUB' or 'GITLAB'."
+  }
   validation {
     condition = (
       var.repository_type != "GITHUB" ||
@@ -138,13 +129,6 @@ variable "repository_type" {
       (var.gitlab_auth != null && var.github_auth == null)
     )
     error_message = "When repository_type is 'GITLAB', the 'gitlab_auth' variable must be set, and 'github_auth' must not be set."
-  }
-  validation {
-    condition = (
-      var.repository_type != "CSR" ||
-      (var.github_auth == null && var.gitlab_auth == null)
-    )
-    error_message = "When repository_type is 'CSR', neither 'github_auth' nor 'gitlab_auth' should be set."
   }
 }
 
