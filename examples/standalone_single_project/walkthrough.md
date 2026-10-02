@@ -111,6 +111,7 @@ To use your Git provider, push the application code and CI configuration files t
 3. Copy the required Cloud Build CI configuration and policies into the application folder:
     ```bash
     cp $BLUEPRINT_FOLDER/build/cloudbuild-ci.yaml .
+    cp $BLUEPRINT_FOLDER/build/skaffold.yaml .
     cp -R $BLUEPRINT_FOLDER/examples/app_cicd/policies ./policies
     ```
 4. Initialize a new git repository and push it to your linked external CI repository (replace `YOUR_REPO_URL` with the URL you provided in `ci_repository.repository_url` in your `terraform.tfvars`):

@@ -266,6 +266,9 @@ func setupGitOperations(t *testing.T, bpFolder, wsFolder, ciRepoName string, cdR
 	ciYamlDest := filepath.Join(appRepoLocalPath, "cloudbuild-ci.yaml")
 	runCmd(t, bpFolder, "cp", "/workspace/build/cloudbuild-ci.yaml", ciYamlDest)
 
+	skaffoldYamlDest := filepath.Join(appRepoLocalPath, "skaffold.yaml")
+	runCmd(t, bpFolder, "cp", "/workspace/build/skaffold.yaml", skaffoldYamlDest)
+
 	policiesDest := filepath.Join(appRepoLocalPath, "policies")
 	runCmd(t, bpFolder, "cp", "-R", "/workspace/build/policies", policiesDest)
 
